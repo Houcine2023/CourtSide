@@ -1,0 +1,22 @@
+# Java / Maven
+backend/target/
+*.class
+*.log
+
+# Node / Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+Thumbs.db
+.DS_Store
+
+# env / secrets — real config never enters git
+.env
+*.local.yml

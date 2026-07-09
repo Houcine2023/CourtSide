@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: courtside-api
+
+  datasource:
+    # Matches docker-compose. In prod these come from environment variables, never from git.
+    url: jdbc:postgresql://localhost:5432/courtside
+    username: courtside
+    password: courtside
+
+  jpa:
+    hibernate:
+      # NEVER let Hibernate create/update the schema. Flyway owns the schema;
+      # 'validate' makes Hibernate check that entities and tables agree at startup
+      # and fail fast if they drift.
+      ddl-auto: validate
+    # Open Session In View keeps the DB session open while rendering responses,
+    # which silently "fixes" lazy-loading bugs you should actually fix. Off, always.
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true # scans classpath:db/migration for V*__*.sql at startup
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.flywaydb: INFO
+    # Uncomment to see every SQL statement Hibernate runs (your N+1 detector):
+    # org.hibernate.SQL: DEBUG

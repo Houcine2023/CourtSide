@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: courtside-db
+    environment:
+      POSTGRES_DB: courtside
+      POSTGRES_USER: courtside
+      POSTGRES_PASSWORD: courtside # dev only — never a real secret in compose
+    ports:
+      - "5432:5432" # host:container — your app connects to localhost:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data # named volume: data survives container restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U courtside -d courtside"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: courtside-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  adminer:
+    image: adminer:latest
+    container_name: courtside-adminer
+    ports:
+      - "8081:8080" # open http://localhost:8081 -> server: postgres, user: courtside
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
