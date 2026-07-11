@@ -38,3 +38,6 @@ logging:
     org.flywaydb: INFO
     # Uncomment to see every SQL statement Hibernate runs (your N+1 detector):
     # org.hibernate.SQL: DEBUG
+app:
+  jwt:
+    secret: ${JWT_SECRET}
