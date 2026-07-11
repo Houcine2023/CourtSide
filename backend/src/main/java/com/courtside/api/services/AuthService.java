@@ -1,5 +1,6 @@
 package com.courtside.api.services;
 
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -40,23 +41,22 @@ public class AuthService {
 
         userRepository.save(user);
 
-        String Token = jwtService.generateToken(user);
-        
-        return new AuthResponse(Token);
+        String token = jwtService.generateToken(user);
+
+        return new AuthResponse(token);
     }
 
     public AuthResponse login(LoginRequest loginRequest){
 
+        // Same generic message whether the email or the password is wrong:
+        // revealing which one failed lets attackers enumerate accounts.
         User user = userRepository.findByEmail(loginRequest.email())
         .orElseThrow(
-            () -> new RuntimeException(
-            "Invalid Crediantials"
-        ));
+            () -> new BadCredentialsException("Invalid credentials")
+        );
 
         if (!encoder.matches(loginRequest.password(), user.getPasswordHash())) {
-            throw new RuntimeException(
-                "invalid crediantials"
-            );
+            throw new BadCredentialsException("Invalid credentials");
         }
 
         String token = jwtService.generateToken(user);

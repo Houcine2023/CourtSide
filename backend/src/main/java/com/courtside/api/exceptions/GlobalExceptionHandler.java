@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidation(
+    public ResponseEntity<ErrorResponse> handleValidation(
             MethodArgumentNotValidException ex) {
 
         Map<String, String> errors = new HashMap<>();
@@ -55,8 +55,14 @@ public class GlobalExceptionHandler {
               )
           );
 
+        // Same ErrorResponse shape as every other error — clients parse ONE format.
         return ResponseEntity
                 .badRequest()
-                .body(errors);
+                .body(new ErrorResponse(
+                        400,
+                        "Bad Request",
+                        "Validation failed",
+                        errors
+                ));
     }
 }

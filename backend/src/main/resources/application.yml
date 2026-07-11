@@ -40,4 +40,6 @@ logging:
     # org.hibernate.SQL: DEBUG
 app:
   jwt:
-    secret: ${JWT_SECRET}
+    # ${ENV_VAR:default} -> use the JWT_SECRET environment variable when present
+    # (production), otherwise fall back to this dev-only value (>= 32 bytes for HMAC).
+    secret: ${JWT_SECRET:courtside-dev-only-secret-do-not-use-in-prod-0123456789}

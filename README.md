@@ -1,0 +1,59 @@
+# CourtSide 🎾
+
+Sports-facility booking platform — Angular · Spring Boot 3 · PostgreSQL · Redis.
+Flagship project: conflict-safe bookings enforced by a PostgreSQL exclusion constraint.
+
+## Run it locally
+
+### 1. Start the infrastructure (once per work session)
+
+```powershell
+cd CourtSide
+docker compose up -d        # starts postgres + redis + adminer
+docker compose ps           # check: courtside-db must be "healthy"
+```
+
+- **Adminer** (browse the database): http://localhost:8081
+  — system `PostgreSQL`, server `postgres`, user/pass/db `courtside`
+- Stop everything at the end: `docker compose down` (data survives in the volume;
+  `docker compose down -v` wipes it)
+
+### 2. Start the backend
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+Wait for the Spring banner + "Started CourtsideApiApplication". Flyway applies any new
+migrations automatically at startup. Stop with `Ctrl+C`.
+
+- Health check: http://localhost:8080/actuator/health -> `{"status":"UP"}`
+- Dev JWT secret has a built-in default; production overrides it via the `JWT_SECRET`
+  environment variable.
+
+### 3. Test the API (PowerShell)
+
+```powershell
+# register (expect 201 + token)
+$r = Invoke-RestMethod -Method Post http://localhost:8080/api/v1/auth/register `
+  -ContentType "application/json" `
+  -Body '{"email":"me@test.tn","password":"secret123","fullName":"Houcine"}'
+
+# login (expect 200 + token)
+$r = Invoke-RestMethod -Method Post http://localhost:8080/api/v1/auth/login `
+  -ContentType "application/json" -Body '{"email":"me@test.tn","password":"secret123"}'
+
+# who am I? (expect 200 with your info)
+Invoke-RestMethod http://localhost:8080/api/v1/me `
+  -Headers @{ Authorization = "Bearer $($r.accessToken)" }
+
+# without token (expect 401)
+Invoke-RestMethod http://localhost:8080/api/v1/me
+```
+
+## Project docs
+
+- `FLAGSHIP_PROJECT_SPEC.md` (in Portfilo) — full feature spec & milestones
+- `docs/PROGRESS.md` — coaching log: review findings, lessons, session log
+- `docs/session-2-auth-assignment.md` — the auth assignment

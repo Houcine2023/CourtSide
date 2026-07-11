@@ -7,6 +7,7 @@ import com.courtside.api.entities.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 import javax.crypto.SecretKey;
@@ -21,10 +22,11 @@ public class JwtService {
     @Value("${app.jwt.secret}")
     private String secret;
 
-    private final long jwtExpirtation = 15 * 60 * 1000;
+    private final long jwtExpiration = 15 * 60 * 1000;
 
-    private SecretKey getSigninKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+    private SecretKey getSigningKey() {
+        // Always pin the charset: getBytes() without one depends on the OS default.
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateToken(User user) {
@@ -34,16 +36,16 @@ public class JwtService {
                 .issuedAt(new Date())
                 .expiration(
                     new Date(
-                        System.currentTimeMillis()+ jwtExpirtation
+                        System.currentTimeMillis()+ jwtExpiration
                     )
                 )
-                .signWith(getSigninKey())
+                .signWith(getSigningKey())
                 .compact();
     }
 
     public String extractEmail(String token) {
         return Jwts.parser()
-                .verifyWith(getSigninKey())
+                .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()

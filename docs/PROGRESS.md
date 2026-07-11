@@ -31,16 +31,22 @@ Behavior tests: register 201 ✅ · duplicate 409 ✅ · login 200 ✅ · valida
 
 | # | Severity | Finding | File | Status |
 |---|---|---|---|---|
-| N1 | 🔴 | Login failure throws bare `RuntimeException` — your own `BadCredentialsException` handler is dead code (never triggered). Throw `BadCredentialsException` in BOTH branches of login | `AuthService` | **OPEN** |
-| N2 | 🔴 | No `AuthenticationEntryPoint` configured → Spring Security answers **403** for unauthenticated requests. Add `.exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))` | `SecurityConfig` | **OPEN** |
-| N3 | 🟡 | ERROR dispatch is blocked by the auth rules → real 404/500 responses masked as 403. Add first rule: `.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()` (import `jakarta.servlet.DispatcherType`) | `SecurityConfig` | **OPEN** |
-| N4 | 🟡 | Empty `catch (Exception e) {}` in the filter — silent evidence destruction. Log at debug: which token failure and why | `JwtAuthenticationFilter` | **OPEN** |
-| N5 | 🟡 | `${JWT_SECRET}` with no default → app cannot start without the env var (good security instinct though!). Use `${JWT_SECRET:<long-dev-default-32+bytes>}`; also `secret.getBytes(StandardCharsets.UTF_8)` | `application.yml`, `JwtService` | **OPEN** |
-| N6 | 🟡 | `GET /api/v1/me` (assignment step 7) not implemented | — | **OPEN** |
-| N7 | 🟢 | Naming: `String Token` → `token`; `jwtExpirtation` → `jwtExpiration`; lambda param `crsf` → `csrf` | `AuthService`, `JwtService`, `SecurityConfig` | **OPEN** |
-| N8 | 🟢 | Validation errors return a bare `Map` while other errors use `ErrorResponse` — unify the error contract (one shape, optional `fieldErrors`) | `GlobalExceptionHandler` | **OPEN** |
-| N9 | 🟢 | Whole `User` entity used as the principal — works, but a slim principal (id/email/role) is cleaner; note for later | `JwtAuthenticationFilter` | note |
-| P1 | 🔴 process | **Zero commits on `feature/auth`** — all work is untracked. Commit in logical chunks NOW (entity+repo / DTOs+validation / security / service+controller) | git | **OPEN** |
+| N1 | 🔴 | Login failure threw bare `RuntimeException` → now `BadCredentialsException`, handler alive | `AuthService` | ✅ FIXED (by Claude, verified: test 4 → 401) |
+| N2 | 🔴 | No `AuthenticationEntryPoint` → added `HttpStatusEntryPoint(UNAUTHORIZED)` | `SecurityConfig` | ✅ FIXED (verified: test 6 → 401) |
+| N3 | 🟡 | ERROR dispatch blocked → added `dispatcherTypeMatchers(ERROR).permitAll()` | `SecurityConfig` | ✅ FIXED (verified: test 8 → 404) |
+| N4 | 🟡 | Empty `catch {}` in filter → now logs rejection reason at debug | `JwtAuthenticationFilter` | ✅ FIXED |
+| N5 | 🟡 | `${JWT_SECRET}` no default → `${JWT_SECRET:dev-default}` + UTF-8 charset pinned | `application.yml`, `JwtService` | ✅ FIXED |
+| N6 | 🟡 | `GET /api/v1/me` implemented (`MeController`, `MeResponse`) | controllers | ✅ FIXED (verified: 200 with token, 401 without) |
+| N7 | 🟢 | Naming: `token`, `jwtExpiration`, `csrf`, `getSigningKey` | several | ✅ FIXED |
+| N8 | 🟢 | Error contract unified: `ErrorResponse` + optional `fieldErrors` (+`@JsonInclude(NON_NULL)`) | `GlobalExceptionHandler`, `ErrorResponse` | ✅ FIXED |
+| N9 | 🟢 | Whole `User` entity used as the principal — a slim principal is cleaner; revisit when adding roles/RBAC | `JwtAuthenticationFilter` | note |
+| P1 | 🔴 process | Zero commits → user's work committed as-is (`181082c`), fixes in separate commits so the diff is readable | git | ✅ FIXED |
+
+**Review #2 verification (2026-07-11): all 8 behavior tests green** — register 201, duplicate 409,
+login 200, wrong password **401**, validation 400, no token **401**, /me 200, unknown URL **404**.
+Also fixed during the session: findings #4 (LoginResponse deleted) and #6 (@Repository removed) from review #1.
+Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿`) that javac rejects —
+"illegal character" on line 1 means invisible bytes, not visible code.
 
 ---
 

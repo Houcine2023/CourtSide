@@ -92,10 +92,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter{
 
         }
         catch(Exception e){
-
-            // Invalid JWT
-            // Continue without authentication
-
+            // Invalid/expired token -> continue unauthenticated (Security answers 401 later),
+            // but never silently: keep the evidence in the logs.
+            logger.debug("JWT rejected: " + e.getClass().getSimpleName() + " - " + e.getMessage());
         }
 
 
