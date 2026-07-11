@@ -11,16 +11,36 @@ Rule: a review finding stays **OPEN** until verified fixed in the code — not j
 
 | # | Severity | Finding | File | Status |
 |---|---|---|---|---|
-| 1 | 🔴 | `existByEmail` → must be `existsByEmail` (Spring Data name grammar; app crashes at startup) | `UserRepository` | **OPEN** |
-| 2a | 🔴 | `password_hash` mapped `nullable = true` but schema says NOT NULL — entity must mirror the migration | `User` | **OPEN** |
-| 2b | 🔴 | `full_name` mapped `unique = true` — constraint invented, doesn't exist in schema; also missing `nullable = false` | `User` | **OPEN** |
-| 3a | 🟡 | email missing `@Email` | `RegisterRequest` | **OPEN** |
-| 3b | 🟡 | password missing `@NotBlank` — `@Size` **accepts null** (the null-skip trap of Bean Validation) | `RegisterRequest` | **OPEN** |
-| 3c | 🟡 | `fullName` has no validation — add `@NotBlank` | `RegisterRequest` | **OPEN** |
-| 4 | 🟡 | `LoginResponse` is an empty duplicate — delete, return `AuthResponse` from login too | `dtos` | **OPEN** |
-| 5 | 🟢 | `long id` → `Long` (wrapper): unsaved entity should have `null` id, not `0` | `User` | **OPEN** |
+| 1 | 🔴 | `existByEmail` → must be `existsByEmail` (Spring Data name grammar; app crashes at startup) | `UserRepository` | ✅ FIXED (verified 07-11) |
+| 2a | 🔴 | `password_hash` mapped `nullable = true` but schema says NOT NULL — entity must mirror the migration | `User` | ✅ FIXED (verified 07-11) |
+| 2b | 🔴 | `full_name` mapped `unique = true` — constraint invented, doesn't exist in schema; also missing `nullable = false` | `User` | ✅ FIXED (verified 07-11) |
+| 3a | 🟡 | email missing `@Email` | `RegisterRequest` | ✅ FIXED (verified 07-11) |
+| 3b | 🟡 | password missing `@NotBlank` — `@Size` **accepts null** (the null-skip trap of Bean Validation) | `RegisterRequest` | ✅ FIXED (verified 07-11) |
+| 3c | 🟡 | `fullName` has no validation — add `@NotBlank` | `RegisterRequest` | ✅ FIXED (verified 07-11) |
+| 4 | 🟡 | `LoginResponse` is an empty duplicate — **file still exists, delete it** | `dtos` | **OPEN** |
+| 5 | 🟢 | `long id` → `Long` (wrapper): unsaved entity should have `null` id, not `0` | `User` | ✅ FIXED (verified 07-11) |
 | 6 | 🟢 | `@Repository` redundant on a `JpaRepository` interface | `UserRepository` | **OPEN** |
-| — | 💭 | Design smell: `@Size(min=8)` on **login** password — policy belongs to registration | `LoginRequest` | **OPEN** |
+| — | 💭 | Design smell: `@Size(min=8)` on **login** password — policy belongs to registration | `LoginRequest` | ✅ FIXED (verified 07-11) |
+
+**Review #1 score: 8 / 10 fixed.**
+
+### Session 2 review #2 — full auth run (2026-07-11)
+
+Behavior tests: register 201 ✅ · duplicate 409 ✅ · login 200 ✅ · validation 400 ✅ · BCrypt in DB ✅
+· wrong password → **403 (should be 401)** ❌ · no token → **403 (should be 401)** ❌ · valid token + unknown URL → **403 (should be 404)** ❌
+
+| # | Severity | Finding | File | Status |
+|---|---|---|---|---|
+| N1 | 🔴 | Login failure throws bare `RuntimeException` — your own `BadCredentialsException` handler is dead code (never triggered). Throw `BadCredentialsException` in BOTH branches of login | `AuthService` | **OPEN** |
+| N2 | 🔴 | No `AuthenticationEntryPoint` configured → Spring Security answers **403** for unauthenticated requests. Add `.exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))` | `SecurityConfig` | **OPEN** |
+| N3 | 🟡 | ERROR dispatch is blocked by the auth rules → real 404/500 responses masked as 403. Add first rule: `.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()` (import `jakarta.servlet.DispatcherType`) | `SecurityConfig` | **OPEN** |
+| N4 | 🟡 | Empty `catch (Exception e) {}` in the filter — silent evidence destruction. Log at debug: which token failure and why | `JwtAuthenticationFilter` | **OPEN** |
+| N5 | 🟡 | `${JWT_SECRET}` with no default → app cannot start without the env var (good security instinct though!). Use `${JWT_SECRET:<long-dev-default-32+bytes>}`; also `secret.getBytes(StandardCharsets.UTF_8)` | `application.yml`, `JwtService` | **OPEN** |
+| N6 | 🟡 | `GET /api/v1/me` (assignment step 7) not implemented | — | **OPEN** |
+| N7 | 🟢 | Naming: `String Token` → `token`; `jwtExpirtation` → `jwtExpiration`; lambda param `crsf` → `csrf` | `AuthService`, `JwtService`, `SecurityConfig` | **OPEN** |
+| N8 | 🟢 | Validation errors return a bare `Map` while other errors use `ErrorResponse` — unify the error contract (one shape, optional `fieldErrors`) | `GlobalExceptionHandler` | **OPEN** |
+| N9 | 🟢 | Whole `User` entity used as the principal — works, but a slim principal (id/email/role) is cleaner; note for later | `JwtAuthenticationFilter` | note |
+| P1 | 🔴 process | **Zero commits on `feature/auth`** — all work is untracked. Commit in logical chunks NOW (entity+repo / DTOs+validation / security / service+controller) | git | **OPEN** |
 
 ---
 
@@ -58,6 +78,15 @@ Rule: a review finding stays **OPEN** until verified fixed in the code — not j
 - Starters inherit versions from the Spring Boot parent POM; third-party deps (jjwt) pin their own.
 
 ---
+
+### From review #2 (2026-07-11)
+- **401 vs 403**: 401 = "I don't know who you are" (missing/bad credentials); 403 = "I know you, and you may not do this."
+- Spring Security with **no configured AuthenticationEntryPoint** falls back to `Http403ForbiddenEntryPoint` → everything unauthenticated gets 403. Configure the entry point to get honest 401s.
+- An uncaught exception in a controller **bounces to `/error`** (a second, internal dispatch). If your security rules block the ERROR dispatch, the real status (404/500) is masked. `dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()`.
+- An `@ExceptionHandler` only fires for exceptions that actually get thrown — writing the handler without throwing the exception = dead code. Trace the whole path.
+- jjwt picks the HMAC algorithm from the key length (32 bytes → HS256, 48 → HS384, 64 → HS512) when you don't specify it.
+- Empty `catch {}` = destroying the evidence. At minimum, log at debug level.
+- Commit as you go, in logical chunks — a day of uncommitted work is a day you can lose.
 
 ## Session log
 
