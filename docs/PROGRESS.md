@@ -122,11 +122,25 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - `@Version` optimistic locking → concurrent edits raise `ObjectOptimisticLockingFailureException` → mapped to **409**, so no change is silently lost.
 - Cap `size` on paginated endpoints — an uncapped `size=1000000` is a DoS vector.
 
+### Session 5 — availability & conflict-safe booking (2026-08-02) ⭐ the centrepiece
+- **The overlap test must be identical in Java and in the DB**: `[a1,a2)` and `[b1,b2)` overlap iff `a1 < b2 && a2 > b1`. Strict inequalities = half-open ranges = back-to-back slots (09:30–11:00 then 11:00–12:30) don't collide, exactly like Postgres `tstzrange`. If the two definitions disagree, Java offers a slot the DB then rejects.
+- **Two layers against double booking**: the Java pre-check gives a friendly 409; the exclusion constraint is what makes cheating *impossible*. Neither replaces the other — application checks can't be atomic across transactions.
+- **`saveAndFlush`, not `save`**: forces the INSERT now so the constraint violation is catchable inside the try block. With `save()` the flush happens at commit, outside the method, and the user gets a raw 500 instead of a 409.
+- Verified with **10 truly simultaneous requests**: 1 × 201, 9 × 409, exactly 1 row in the DB.
+- **Status codes have meanings**: 400 = malformed payload · 422 = understood but breaks a business rule · 409 = the state of the world says no (and might succeed later).
+- Price is **computed server-side** and frozen on the row — never trust a client-sent amount, and never let a later price change rewrite past bookings.
+- Availability = ONE query for the whole day, then match slots in memory (a query per slot is a textbook N+1).
+- Wall-clock (`LocalTime`, opening hours) vs instants (`TIMESTAMPTZ`, bookings): a zone converts between them — `app.timezone`.
+- `LazyInitializationException` struck again on `court.getClub()` in the response DTO → fetch-join variant `getByIdWithClub`. Recurring rule: **anything the DTO touches must be loaded inside the transaction**.
+- Cancelling = status change, not deletion: the constraint ignores CANCELLED rows, so the slot frees up while the history survives (proved in the DB: a CANCELLED and a CONFIRMED row share the same start time).
+- PowerShell gotcha for testing: `Start-Job` dies with the shell; JSON dates come back as **strings**, not DateTime.
+
 ## Session log
 
 | Date | Session | Done |
 |---|---|---|
 | 2026-07-09 | 1 — Infra | Repo + compose (Postgres/Redis/Adminer) + Spring Boot skeleton + `application.yml` + Flyway V1 with exclusion constraint; verified live (health UP, overlap rejected). Commit `4d9f3aa` on `main`. |
+| 2026-08-02 | 5 — Availability & Booking ⭐ | Opening hours (upsert PUT), availability grid, **conflict-safe booking**, cancel, my-bookings. Business rules: past, duration, opening hours, grid alignment, cancel window. New: `BusinessRuleException`→422, `SlotUnavailableException`→409. 16/16 behaviour tests + **concurrency race test: 10 simultaneous requests → 1 success, 9 conflicts, 1 DB row**. Bug found & fixed: LazyInitializationException on `court.getClub()` in the response DTO. |
 | 2026-08-02 | 4 — Clubs & Courts + RBAC | He rewrote `RefreshToken` (broke 7 things: missing `@Table`, `user_id` field name, `long` id, no `@CreationTimestamp`, no `@Column` metadata) → fixed with explanations; `.vscode/settings.json` added so the Java extension imports the Maven project in `backend/`. Built: `Club`/`Court`/`Sport` entities, repositories with fetch joins, DTOs (+`PageResponse`), `NotFoundException`, 403/404/409 handlers, `ClubService`/`CourtService` with ownership rules, `ClubController`/`CourtController` with `@PreAuthorize`, public GETs. **Verification caught 3 real bugs** (untyped NULL in JPQL, LazyInitializationException on DTO mapping, admin edit wiping the manager) — all fixed, 18/18 tests green. |
 | 2026-08-02 | 3 — Refresh tokens | He wrote the repository (correct) + an empty entity file. Claude completed the session with teaching comments: `RefreshToken` entity, JOIN FETCH query, `RefreshTokenService` (SecureRandom + SHA-256 hex, issue/consume/revoke/revokeAllForUser), rotation + **reuse detection**, `/auth/refresh` + `/auth/logout` (204), `AuthResponse` pair, configurable TTL, `@Scheduled` cleanup job. Fixed a **port conflict** (native postgres on 5432 → container moved to 5433). All 7 behavior tests green; DB holds only 64-char hashes. |
 | 2026-07-10 | 2 — Auth (ongoing) | Assignment issued (`session-2-auth-assignment.md`). He wrote: `User`, `Role`, `UserRepository`, DTOs, `SecurityConfig` (PasswordEncoder done). Review #1 delivered (10 findings above). SecurityFilterChain explained line-by-line — he implements next, then `JwtService` → filter → service/controller → manual tests. |
@@ -148,4 +162,5 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - [x] Week 2 — clubs/courts CRUD + RBAC + error contract (18/18 behavior tests green)
 - [ ] **First automated tests** (JUnit + Mockito + Testcontainers) — still zero; every check so far has been manual
 - [ ] CI skeleton (GitHub Actions) + push repo to GitHub
-- [ ] Week 3 — availability grid + conflict-safe booking + the concurrency race test
+- [x] Week 3 — availability grid + conflict-safe booking (16/16 tests + 10-way race test green)
+- [ ] Remaining backend: manager dashboard (window functions), Redis cache on availability, WebSocket live updates, waitlist

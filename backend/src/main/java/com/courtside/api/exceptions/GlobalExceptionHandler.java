@@ -61,6 +61,25 @@ public class GlobalExceptionHandler {
                         "This resource was modified by someone else — reload and try again"));
     }
 
+    /** Slot already booked (pre-check or the DB exclusion constraint) -> 409. */
+    @ExceptionHandler(SlotUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleSlotTaken(SlotUnavailableException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(409, "Conflict", ex.getMessage()));
+    }
+
+    /**
+     * Well-formed request that breaks a business rule -> 422.
+     * 400 would say "your JSON is wrong"; it is not. 422 says "I understood you, no".
+     */
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessRule(BusinessRuleException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ErrorResponse(422, "Unprocessable Content", ex.getMessage()));
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentials(
             BadCredentialsException ex) {

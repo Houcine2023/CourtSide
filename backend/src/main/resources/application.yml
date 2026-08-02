@@ -49,3 +49,8 @@ app:
     # Refresh-token lifetime. Short access token (15 min, in JwtService) + long refresh
     # token = security without logging the user out every quarter of an hour.
     expiration-days: 7
+  # Clubs publish wall-clock opening hours; this zone turns them into absolute instants.
+  timezone: Africa/Tunis
+  booking:
+    # Members may cancel freely until this many hours before the start.
+    cancel-hours-before: 2

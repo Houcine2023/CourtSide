@@ -43,6 +43,17 @@ public class CourtService {
                 .orElseThrow(() -> new NotFoundException("Court", id));
     }
 
+    /**
+     * Court WITH its club loaded. Use this whenever the caller will touch
+     * court.getClub() after the transaction ends (DTO mapping), otherwise the lazy
+     * proxy throws LazyInitializationException — open-in-view is off by design.
+     */
+    @Transactional(readOnly = true)
+    public Court getByIdWithClub(Long id) {
+        return courtRepository.findByIdWithClubAndManager(id)
+                .orElseThrow(() -> new NotFoundException("Court", id));
+    }
+
     // ---------------- writes ----------------
 
     @Transactional
