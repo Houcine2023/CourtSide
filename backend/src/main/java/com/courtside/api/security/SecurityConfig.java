@@ -2,7 +2,9 @@ package com.courtside.api.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -14,6 +16,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import jakarta.servlet.DispatcherType;
 
 @Configuration
+// Activates @PreAuthorize / @PostAuthorize. Without it those annotations are
+// silently ignored — every endpoint would be open to any authenticated user.
+@EnableMethodSecurity
 public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder(){
@@ -36,6 +41,11 @@ public class SecurityConfig {
                 "/api/v1/auth/**",
                 "/actuator/health"
             )
+            .permitAll()
+            // Browsing clubs and courts is public — visitors must be able to see
+            // what a club offers before creating an account. Only GET: the write
+            // verbs on the same paths still fall through to authenticated().
+            .requestMatchers(HttpMethod.GET, "/api/v1/clubs/**", "/api/v1/courts/**")
             .permitAll()
             .anyRequest()
             .authenticated()

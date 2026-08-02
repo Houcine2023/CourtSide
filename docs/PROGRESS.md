@@ -109,11 +109,25 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - Logout is **idempotent** and silent on unknown tokens — erroring would turn it into an oracle for testing stolen tokens.
 - **Port conflict debugging**: a native `postgresql-x64-17` Windows service owned 5432, so the app silently reached the WRONG database ("password authentication failed"). Container republished on **5433**. Lesson: when credentials "suddenly" fail, verify *which* server you're actually talking to (`Get-NetTCPConnection -LocalPort`).
 
+### Session 4 — clubs & courts CRUD + RBAC (2026-08-02)
+- **Entity naming rules**: no `@Table` → Hibernate derives the table from the CLASS name (`RefreshToken` → `refresh_token`, singular) → startup validation fails. A `@ManyToOne` field must be named after the OBJECT (`user`), not the column (`user_id`): Lombok generates `getUser()` and JPQL navigates `rt.user`; the column name belongs in `@JoinColumn`.
+- `@CreationTimestamp` missing → NULL into a NOT NULL column: a runtime failure the compiler cannot see.
+- **NULL parameters in JPQL are poison**: `:q is null or ...` makes Postgres receive an untyped NULL → *"function lower(bytea) does not exist"*. Normalise in the service (`null → "%"`, `null → ""`) instead.
+- **LazyInitializationException**: mapping an entity to a DTO *after* the transaction closes (OSIV off) explodes on lazy relations. Cure: `left join fetch` in the query. Safe with `Pageable` for `@ManyToOne` (single-valued); a fetch-joined COLLECTION would force in-memory paging.
+- **Two layers of authorization**: `@PreAuthorize("hasAnyRole(...)")` answers "what kind of user are you?" at the endpoint; the service answers "is this YOUR object?" (ownership). Roles alone would let any manager edit any club.
+- `@EnableMethodSecurity` is required or `@PreAuthorize` is silently ignored — same trap family as `@EnableScheduling`.
+- **Absent field ≠ null value**: treating a missing `managerId` as "set to null" made every admin edit unassign the club's manager. The test suite caught it; PATCH-style semantics need explicit "was it provided?" handling.
+- Money is `BigDecimal`/NUMERIC, never double. Enums are `EnumType.STRING`, never ORDINAL (reordering the enum would rewrite history).
+- **Soft delete** for courts (`active = false`): the FK cascades to bookings, so a real DELETE would erase booking history.
+- `@Version` optimistic locking → concurrent edits raise `ObjectOptimisticLockingFailureException` → mapped to **409**, so no change is silently lost.
+- Cap `size` on paginated endpoints — an uncapped `size=1000000` is a DoS vector.
+
 ## Session log
 
 | Date | Session | Done |
 |---|---|---|
 | 2026-07-09 | 1 — Infra | Repo + compose (Postgres/Redis/Adminer) + Spring Boot skeleton + `application.yml` + Flyway V1 with exclusion constraint; verified live (health UP, overlap rejected). Commit `4d9f3aa` on `main`. |
+| 2026-08-02 | 4 — Clubs & Courts + RBAC | He rewrote `RefreshToken` (broke 7 things: missing `@Table`, `user_id` field name, `long` id, no `@CreationTimestamp`, no `@Column` metadata) → fixed with explanations; `.vscode/settings.json` added so the Java extension imports the Maven project in `backend/`. Built: `Club`/`Court`/`Sport` entities, repositories with fetch joins, DTOs (+`PageResponse`), `NotFoundException`, 403/404/409 handlers, `ClubService`/`CourtService` with ownership rules, `ClubController`/`CourtController` with `@PreAuthorize`, public GETs. **Verification caught 3 real bugs** (untyped NULL in JPQL, LazyInitializationException on DTO mapping, admin edit wiping the manager) — all fixed, 18/18 tests green. |
 | 2026-08-02 | 3 — Refresh tokens | He wrote the repository (correct) + an empty entity file. Claude completed the session with teaching comments: `RefreshToken` entity, JOIN FETCH query, `RefreshTokenService` (SecureRandom + SHA-256 hex, issue/consume/revoke/revokeAllForUser), rotation + **reuse detection**, `/auth/refresh` + `/auth/logout` (204), `AuthResponse` pair, configurable TTL, `@Scheduled` cleanup job. Fixed a **port conflict** (native postgres on 5432 → container moved to 5433). All 7 behavior tests green; DB holds only 64-char hashes. |
 | 2026-07-10 | 2 — Auth (ongoing) | Assignment issued (`session-2-auth-assignment.md`). He wrote: `User`, `Role`, `UserRepository`, DTOs, `SecurityConfig` (PasswordEncoder done). Review #1 delivered (10 findings above). SecurityFilterChain explained line-by-line — he implements next, then `JwtService` → filter → service/controller → manual tests. |
 
@@ -131,5 +145,7 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 
 - [x] Session 2 — auth: register/login/JWT/`/me`, all 8 behavior tests green (commits `181082c` + `46b83e4`)
 - [x] Session 3 — refresh tokens, rotation, reuse detection, logout, cleanup job (all 7 tests green)
+- [x] Week 2 — clubs/courts CRUD + RBAC + error contract (18/18 behavior tests green)
+- [ ] **First automated tests** (JUnit + Mockito + Testcontainers) — still zero; every check so far has been manual
 - [ ] CI skeleton (GitHub Actions) + push repo to GitHub
-- [ ] Week 2 per `FLAGSHIP_PROJECT_SPEC.md`: clubs/courts CRUD + RBAC + error contract + first tests
+- [ ] Week 3 — availability grid + conflict-safe booking + the concurrency race test
