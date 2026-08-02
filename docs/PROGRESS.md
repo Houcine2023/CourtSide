@@ -57,6 +57,11 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 3. Why does the JWT filter go **before** `UsernamePasswordAuthenticationFilter`?
 4. Why does login return the same generic 401 whether the email or the password was wrong?
 5. Why do we store a *hash* of refresh tokens instead of the token itself?
+6. A JWT is signed, not encrypted — what does that mean for what you may put in the payload?
+7. Why can't a server "cancel" an access token, and how do refresh tokens work around it?
+8. Why is the refresh token a random string instead of a JWT?
+9. Why SHA-256 for refresh tokens but BCrypt for passwords?
+10. What is token rotation, and what does reuse detection protect against?
 
 ---
 
@@ -101,9 +106,19 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 | 2026-07-09 | 1 — Infra | Repo + compose (Postgres/Redis/Adminer) + Spring Boot skeleton + `application.yml` + Flyway V1 with exclusion constraint; verified live (health UP, overlap rejected). Commit `4d9f3aa` on `main`. |
 | 2026-07-10 | 2 — Auth (ongoing) | Assignment issued (`session-2-auth-assignment.md`). He wrote: `User`, `Role`, `UserRepository`, DTOs, `SecurityConfig` (PasswordEncoder done). Review #1 delivered (10 findings above). SecurityFilterChain explained line-by-line — he implements next, then `JwtService` → filter → service/controller → manual tests. |
 
+### Session 3 — refresh tokens (theory, 2026-07-11)
+- JWT = `header.payload.signature`, Base64 — **signed, not encrypted**: anyone can read the payload (jwt.io), only the secret holder can forge a valid signature. Never put secrets in claims.
+- Signature = tamper detection: edit the payload → signature no longer matches → rejected.
+- Sessions = wristband (server remembers, needs shared memory across instances); JWT = passport (carries identity, any instance verifies with the secret) → enables `STATELESS`.
+- The cost of statelessness: **a JWT cannot be revoked** — valid until `exp`. Short life = safer but annoying; long life = convenient but dangerous if stolen.
+- Two-token model: short access JWT (15 min, stateless) + long opaque refresh token (7 days, stored hashed in DB → revocable). Control at the boundaries.
+- Refresh token is NOT a JWT: it's checked in the DB anyway, so self-description buys nothing.
+- SHA-256 (fast) for a 256-bit random token vs BCrypt (deliberately slow) for guessable human passwords.
+- **Rotation**: every refresh issues a new refresh token and revokes the old one → enables **reuse detection** (an already-used token reappearing = theft signal → revoke the whole family).
+
 ## Next milestones
 
-- [ ] Finish session 2: fixes + filter chain + JwtService + JwtAuthFilter + AuthService/Controller + `/api/v1/me` + manual tests → full review ("review my auth")
-- [ ] Session 3: refresh tokens + logout
+- [x] Session 2 — auth: register/login/JWT/`/me`, all 8 behavior tests green (commits `181082c` + `46b83e4`)
+- [ ] Session 3 — refresh tokens, rotation, reuse detection, logout (assignment issued, he codes it)
 - [ ] CI skeleton (GitHub Actions) + push repo to GitHub
 - [ ] Week 2 per `FLAGSHIP_PROJECT_SPEC.md`: clubs/courts CRUD + RBAC + error contract + first tests
