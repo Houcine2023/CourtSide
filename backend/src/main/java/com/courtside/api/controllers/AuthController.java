@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.courtside.api.dtos.AuthResponse;
 import com.courtside.api.dtos.LoginRequest;
+import com.courtside.api.dtos.RefreshRequest;
 import com.courtside.api.dtos.RegisterRequest;
 import com.courtside.api.services.AuthService;
 
@@ -35,13 +36,39 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-public AuthResponse login(
-        @Valid
-        @RequestBody
-        LoginRequest request
-){
+    public AuthResponse login(
+            @Valid
+            @RequestBody
+            LoginRequest request
+    ){
+        return authService.login(request);
+    }
 
-    return authService.login(request);
+    /**
+     * Exchange a refresh token for a new pair.
+     *
+     * This endpoint is intentionally reachable WITHOUT an access token: its whole
+     * purpose is to be called once the access token has expired. Requiring a valid
+     * access token here would create a deadlock — you could only refresh while you
+     * did not need to. The refresh token itself is the credential.
+     */
+    @PostMapping("/refresh")
+    public AuthResponse refresh(
+            @Valid
+            @RequestBody
+            RefreshRequest request
+    ){
+        return authService.refresh(request);
+    }
 
-}
+    /** 204 No Content: the action succeeded and there is nothing meaningful to return. */
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(
+            @Valid
+            @RequestBody
+            RefreshRequest request
+    ){
+        authService.logout(request);
+    }
 }

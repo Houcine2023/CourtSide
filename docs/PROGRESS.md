@@ -99,11 +99,22 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - Empty `catch {}` = destroying the evidence. At minimum, log at debug level.
 - Commit as you go, in logical chunks — a day of uncommitted work is a day you can lose.
 
+### Session 3 — implementation (2026-08-02)
+- `@ManyToOne` is **EAGER by default** — always set `fetch = LAZY`, then load explicitly with `JOIN FETCH` when needed (the N+1 cure).
+- **Spring rolls back on any RuntimeException by default.** Throwing `BadCredentialsException` after revoking tokens would silently undo the revocation → `@Transactional(noRollbackFor = BadCredentialsException.class)`.
+- Inside a transaction, a managed entity's setter is enough — Hibernate **dirty checking** flushes it; no `save()` call needed.
+- `SecureRandom` ≠ `Random`: the latter is predictable from a few outputs.
+- Revoked rows are **kept, not deleted** — that's what makes reuse detection possible; a scheduled job prunes them after 30 days.
+- `@Scheduled` does nothing without **`@EnableScheduling`** on the app class (silent no-op trap).
+- Logout is **idempotent** and silent on unknown tokens — erroring would turn it into an oracle for testing stolen tokens.
+- **Port conflict debugging**: a native `postgresql-x64-17` Windows service owned 5432, so the app silently reached the WRONG database ("password authentication failed"). Container republished on **5433**. Lesson: when credentials "suddenly" fail, verify *which* server you're actually talking to (`Get-NetTCPConnection -LocalPort`).
+
 ## Session log
 
 | Date | Session | Done |
 |---|---|---|
 | 2026-07-09 | 1 — Infra | Repo + compose (Postgres/Redis/Adminer) + Spring Boot skeleton + `application.yml` + Flyway V1 with exclusion constraint; verified live (health UP, overlap rejected). Commit `4d9f3aa` on `main`. |
+| 2026-08-02 | 3 — Refresh tokens | He wrote the repository (correct) + an empty entity file. Claude completed the session with teaching comments: `RefreshToken` entity, JOIN FETCH query, `RefreshTokenService` (SecureRandom + SHA-256 hex, issue/consume/revoke/revokeAllForUser), rotation + **reuse detection**, `/auth/refresh` + `/auth/logout` (204), `AuthResponse` pair, configurable TTL, `@Scheduled` cleanup job. Fixed a **port conflict** (native postgres on 5432 → container moved to 5433). All 7 behavior tests green; DB holds only 64-char hashes. |
 | 2026-07-10 | 2 — Auth (ongoing) | Assignment issued (`session-2-auth-assignment.md`). He wrote: `User`, `Role`, `UserRepository`, DTOs, `SecurityConfig` (PasswordEncoder done). Review #1 delivered (10 findings above). SecurityFilterChain explained line-by-line — he implements next, then `JwtService` → filter → service/controller → manual tests. |
 
 ### Session 3 — refresh tokens (theory, 2026-07-11)
@@ -119,6 +130,6 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 ## Next milestones
 
 - [x] Session 2 — auth: register/login/JWT/`/me`, all 8 behavior tests green (commits `181082c` + `46b83e4`)
-- [ ] Session 3 — refresh tokens, rotation, reuse detection, logout (assignment issued, he codes it)
+- [x] Session 3 — refresh tokens, rotation, reuse detection, logout, cleanup job (all 7 tests green)
 - [ ] CI skeleton (GitHub Actions) + push repo to GitHub
 - [ ] Week 2 per `FLAGSHIP_PROJECT_SPEC.md`: clubs/courts CRUD + RBAC + error contract + first tests

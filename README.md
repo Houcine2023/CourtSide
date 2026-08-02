@@ -15,6 +15,8 @@ docker compose ps           # check: courtside-db must be "healthy"
 
 - **Adminer** (browse the database): http://localhost:8081
   — system `PostgreSQL`, server `postgres`, user/pass/db `courtside`
+- Note: the container publishes Postgres on **host port 5433** (5432 is taken by the
+  native `postgresql-x64-17` Windows service). Inside Docker it is still 5432.
 - Stop everything at the end: `docker compose down` (data survives in the volume;
   `docker compose down -v` wipes it)
 
@@ -50,7 +52,32 @@ Invoke-RestMethod http://localhost:8080/api/v1/me `
 
 # without token (expect 401)
 Invoke-RestMethod http://localhost:8080/api/v1/me
+
+# refresh: exchange the refresh token for a NEW pair (the old one dies — rotation)
+$new = Invoke-RestMethod -Method Post http://localhost:8080/api/v1/auth/refresh `
+  -ContentType "application/json" -Body "{`"refreshToken`":`"$($r.refreshToken)`"}"
+
+# replay the OLD refresh token -> 401 AND every session of that user is revoked
+# (reuse detection: a token used twice means someone stole it)
+Invoke-RestMethod -Method Post http://localhost:8080/api/v1/auth/refresh `
+  -ContentType "application/json" -Body "{`"refreshToken`":`"$($r.refreshToken)`"}"
+
+# logout (expect 204) — revokes the refresh token
+Invoke-RestMethod -Method Post http://localhost:8080/api/v1/auth/logout `
+  -ContentType "application/json" -Body "{`"refreshToken`":`"$($new.refreshToken)`"}"
 ```
+
+## API
+
+| Method | Path | Auth | Returns |
+|---|---|---|---|
+| POST | `/api/v1/auth/register` | — | 201 + token pair |
+| POST | `/api/v1/auth/login` | — | 200 + token pair |
+| POST | `/api/v1/auth/refresh` | refresh token | 200 + **new** token pair (rotation) |
+| POST | `/api/v1/auth/logout` | refresh token | 204 |
+| GET | `/api/v1/me` | access token | 200 + your profile |
+
+Access token = JWT, 15 min. Refresh token = opaque random string, 7 days, stored **hashed**.
 
 ## Project docs
 

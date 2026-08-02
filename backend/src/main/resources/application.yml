@@ -4,7 +4,9 @@ spring:
 
   datasource:
     # Matches docker-compose. In prod these come from environment variables, never from git.
-    url: jdbc:postgresql://localhost:5432/courtside
+    # Port 5433: the compose container is published there to avoid a clash with the
+    # native PostgreSQL service installed on this machine (which owns 5432).
+    url: jdbc:postgresql://localhost:5433/courtside
     username: courtside
     password: courtside
 
@@ -43,3 +45,7 @@ app:
     # ${ENV_VAR:default} -> use the JWT_SECRET environment variable when present
     # (production), otherwise fall back to this dev-only value (>= 32 bytes for HMAC).
     secret: ${JWT_SECRET:courtside-dev-only-secret-do-not-use-in-prod-0123456789}
+  refresh:
+    # Refresh-token lifetime. Short access token (15 min, in JwtService) + long refresh
+    # token = security without logging the user out every quarter of an hour.
+    expiration-days: 7

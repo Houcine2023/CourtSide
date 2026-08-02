@@ -7,7 +7,11 @@ services:
       POSTGRES_USER: courtside
       POSTGRES_PASSWORD: courtside # dev only — never a real secret in compose
     ports:
-      - "5432:5432" # host:container — your app connects to localhost:5432
+      # host:container. We publish on 5433 because a native PostgreSQL service
+      # (postgresql-x64-17) already owns 5432 on this machine — connecting to
+      # localhost:5432 would silently reach THAT database instead of this container.
+      # Inside the Docker network the port is still 5432 (see Adminer: server "postgres").
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data # named volume: data survives container restarts
     healthcheck:

@@ -4,8 +4,11 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import com.courtside.api.dtos.AuthResponse;
 import com.courtside.api.dtos.LoginRequest;
+import com.courtside.api.dtos.RefreshRequest;
 import com.courtside.api.dtos.RegisterRequest;
 import com.courtside.api.entities.Role;
 import com.courtside.api.entities.User;
@@ -18,12 +21,16 @@ public class AuthService {
     private final PasswordEncoder encoder;
     private final UserRepository userRepository;
     private final JwtService jwtService;
-    public AuthService(PasswordEncoder encoder , UserRepository userRepository, JwtService jwtService) {
+    private final RefreshTokenService refreshTokenService;
+
+    public AuthService(PasswordEncoder encoder , UserRepository userRepository, JwtService jwtService,
+                       RefreshTokenService refreshTokenService) {
         this.encoder=encoder;
         this.userRepository= userRepository;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
     }
-    
+
 
     public AuthResponse register(RegisterRequest request) {
 
@@ -41,9 +48,7 @@ public class AuthService {
 
         userRepository.save(user);
 
-        String token = jwtService.generateToken(user);
-
-        return new AuthResponse(token);
+        return issueTokens(user);
     }
 
     public AuthResponse login(LoginRequest loginRequest){
@@ -59,12 +64,42 @@ public class AuthService {
             throw new BadCredentialsException("Invalid credentials");
         }
 
-        String token = jwtService.generateToken(user);
+        return issueTokens(user);
+    }
 
+    /**
+     * Exchanges a valid refresh token for a BRAND NEW pair (token rotation).
+     *
+     * Why rotate instead of reusing the same refresh token? Because a token used only
+     * once is detectable when it shows up a second time — that is the trap that catches
+     * a thief (see RefreshTokenService.consume).
+     *
+     * @Transactional wraps consume() + issue() in ONE unit of work: either the old token
+     * is revoked AND the new one is created, or neither happens. Without it, a crash in
+     * between could revoke the user's session while handing back nothing.
+     */
+    @Transactional(noRollbackFor = BadCredentialsException.class)
+    public AuthResponse refresh(RefreshRequest request) {
+        User user = refreshTokenService.consume(request.refreshToken());
+        return issueTokens(user);
+    }
 
-        return new AuthResponse(token);
+    /**
+     * Logout = revoke the refresh token.
+     *
+     * Note the deliberate limitation: the access token stays valid until it expires
+     * (<= 15 min), because a JWT cannot be un-issued. This is the accepted price of a
+     * stateless API; shorten the access-token lifetime if the risk is unacceptable, or
+     * add a denylist — which reintroduces the server-side state we were avoiding.
+     */
+    public void logout(RefreshRequest request) {
+        refreshTokenService.revoke(request.refreshToken());
+    }
 
-        
-
+    /** One place that mints a pair — register, login and refresh all behave identically. */
+    private AuthResponse issueTokens(User user) {
+        String accessToken = jwtService.generateToken(user);
+        String refreshToken = refreshTokenService.issue(user);
+        return new AuthResponse(accessToken, refreshToken);
     }
 }
