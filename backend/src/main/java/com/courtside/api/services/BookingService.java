@@ -42,6 +42,12 @@ public class BookingService {
     private final CourtService courtService;
     private final CacheManager cacheManager;
     private final AvailabilityEventPublisher eventPublisher;
+    private final NotificationService notificationService;
+    private final WaitlistService waitlistService;
+
+    /** How long a HOLD reserves the slot while payment completes. */
+    @Value("${app.booking.hold-minutes:10}")
+    private long holdMinutes;
 
     @Value("${app.timezone:Africa/Tunis}")
     private String timezone;
@@ -54,12 +60,16 @@ public class BookingService {
                           OpeningHoursRepository openingHoursRepository,
                           CourtService courtService,
                           CacheManager cacheManager,
-                          AvailabilityEventPublisher eventPublisher) {
+                          AvailabilityEventPublisher eventPublisher,
+                          NotificationService notificationService,
+                          WaitlistService waitlistService) {
         this.bookingRepository = bookingRepository;
         this.openingHoursRepository = openingHoursRepository;
         this.courtService = courtService;
         this.cacheManager = cacheManager;
         this.eventPublisher = eventPublisher;
+        this.notificationService = notificationService;
+        this.waitlistService = waitlistService;
     }
 
     /**
@@ -94,6 +104,71 @@ public class BookingService {
      * across transactions. And never remove step 1 because step 2 exists: users
      * deserve a readable message before they hit the wall.
      */
+    /**
+     * Creates a HOLD: the slot is reserved (the exclusion constraint counts HOLD as
+     * occupying, so nobody else can take it) but the booking is not final until
+     * payment confirms. If confirmation never comes, the scheduled release job frees it.
+     *
+     * This is how every real booking system handles payment: reserve first, charge
+     * second. Charging first and then failing to reserve is far worse — you have taken
+     * money for a slot someone else got.
+     */
+    @Transactional
+    public Booking createHold(BookingRequest request, User currentUser) {
+        Booking booking = create(request, currentUser);
+        booking.setStatus(BookingStatus.HOLD);
+        booking.setHoldExpiresAt(OffsetDateTime.now().plusMinutes(holdMinutes));
+        return booking;
+    }
+
+    /**
+     * Payment succeeded (simulated): HOLD -> CONFIRMED.
+     *
+     * Rejecting an expired hold here is essential: the release job runs periodically,
+     * so between expiry and the next run a hold is "expired but still HOLD". Time is
+     * checked, not job execution — never trust a scheduler to define correctness.
+     */
+    @Transactional
+    public Booking confirmHold(Long id, User currentUser) {
+        Booking booking = bookingRepository.findByIdDetailed(id)
+                .orElseThrow(() -> new NotFoundException("Booking", id));
+        requireCanSee(booking, currentUser);
+
+        if (booking.getStatus() != BookingStatus.HOLD) {
+            throw new BusinessRuleException("This booking is not awaiting confirmation");
+        }
+        if (booking.getHoldExpiresAt() != null
+                && booking.getHoldExpiresAt().isBefore(OffsetDateTime.now())) {
+            throw new BusinessRuleException("This hold has expired — please book again");
+        }
+
+        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setHoldExpiresAt(null);
+        return booking;
+    }
+
+    /**
+     * Releases holds whose payment window closed. Called by the scheduled job.
+     *
+     * Each release is its own unit of work in the caller's transaction: the slot goes
+     * back to free, the cached grid is dropped, watchers are pushed a SLOT_RELEASED,
+     * and the waitlist is notified — exactly the same consequences as a cancellation,
+     * which is why it reuses the same helpers.
+     */
+    @Transactional
+    public int releaseExpiredHolds() {
+        List<Booking> expired = bookingRepository.findExpiredHolds(OffsetDateTime.now());
+        for (Booking booking : expired) {
+            booking.setStatus(BookingStatus.CANCELLED);
+            booking.setHoldExpiresAt(null);
+            evictAvailability(booking.getCourt(), booking.getStartTime());
+            eventPublisher.publish(booking, AvailabilityEvent.Type.SLOT_RELEASED);
+            notificationService.holdExpired(booking);
+            waitlistService.notifySlotFreed(booking);
+        }
+        return expired.size();
+    }
+
     @Transactional
     public Booking create(BookingRequest request, User currentUser) {
         // WithClub: the response DTO reads court.getClub().getName() after this
@@ -179,6 +254,8 @@ public class BookingService {
         // The slot is free again — the cached grid must not keep showing it as taken.
         evictAvailability(booking.getCourt(), booking.getStartTime());
         eventPublisher.publish(booking, AvailabilityEvent.Type.SLOT_RELEASED);
+        // Somebody may have been waiting for exactly this slot.
+        waitlistService.notifySlotFreed(booking);
         return booking;
     }
 

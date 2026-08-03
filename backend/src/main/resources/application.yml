@@ -61,3 +61,12 @@ app:
   booking:
     # Members may cancel freely until this many hours before the start.
     cancel-hours-before: 2
+    # Payment window: a HOLD blocks the slot for this long, then is released.
+    hold-minutes: 10
+    # Reminders are sent this long before the start.
+    reminder-hours-before: 24
+  jobs:
+    # Overridable so tests/demos can run them far more often than production.
+    hold-release-ms: 60000
+    reminder-cron: "0 0 * * * *"      # hourly, on the hour
+    waitlist-cleanup-cron: "0 30 3 * * *"  # 03:30 nightly

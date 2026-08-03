@@ -20,7 +20,11 @@ public record DashboardResponse(
         long cancelledBookings,
         BigDecimal revenue,
         /** Cancellations / total requests, in percent — a health signal for the club. */
-        BigDecimal cancellationRatePct
+        BigDecimal cancellationRatePct,
+        /** Slots the club offered over the period (derived from opening hours). */
+        long capacitySlots,
+        /** Booked / offered, in percent — the number a club owner actually cares about. */
+        BigDecimal occupancyRatePct
     ) {
     }
 

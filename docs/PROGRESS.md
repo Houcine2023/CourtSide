@@ -159,11 +159,26 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - The in-memory `SimpleBroker` works for one instance; with several nodes a client on node A never sees an event from node B → external relay (RabbitMQ) or Redis pub/sub.
 - Server is the only publisher: no client-to-server destinations are accepted, which removes a whole class of abuse.
 
+### Session 8 — holds, waitlist, occupancy, scheduled jobs (2026-08-03) — backend 100%
+- **V2 migration**: the first schema evolution. Never touch an applied migration — every environment already ran V1 and Flyway compares checksums. Changes always go forward.
+- **Partial indexes**: `CREATE INDEX ... WHERE status = 'HOLD'` indexes only the handful of rows the job scans. Same trick for the unique index on *active* waitlist entries, which lets a user re-join a slot after leaving.
+- **HOLD flow** = reserve first, charge second. The exclusion constraint already counts HOLD as occupying, so a hold really blocks the slot. Confirming checks *time*, not whether the job has run — never let a scheduler define correctness.
+- **`generate_series`** materialises a calendar as rows — the only way to count capacity for days that have no bookings (a plain JOIN would lose them). `EXTRACT(ISODOW)` matches our 1–7 `day_of_week`.
+- Occupancy = confirmed ÷ capacity, where capacity is *derived* (opening hours × courts × days), never stored. Verified: 4 days × 9 slots = 36 → 1 booking = 2.8%.
+- **`::date` vs `:param`**: Hibernate parses `:fromDate::date` as a parameter literally named `fromDate::date`. Use `CAST(x AS date)` in native queries.
+- **`fixedDelay` vs `fixedRate`**: fixedRate can overlap itself if a run is slow; fixedDelay waits after completion. The safe default for DB jobs.
+- A `@Scheduled` method that throws may never be rescheduled — always catch inside the job.
+- Reminder idempotency from the **window** (`[t, t+1h)` run hourly) rather than a "reminded" flag: simpler schema, at the cost of a missed run meaning a missed reminder.
+- Notifications go through **one abstraction** (`NotificationService`) that currently logs — swapping in SMTP later touches one file. Dependency inversion where it actually pays.
+- Waitlist design: notifying does **not** reserve. Announcing to everyone is fair and never leaves a slot locked by someone who walked away.
+- **Lombok cascade lesson**: one real compile error (a duplicate field) makes annotation processing fail, so *every* generated getter/setter appears missing. Dozens of "cannot find symbol getX" usually means ONE genuine error — fix it and the rest evaporate.
+
 ## Session log
 
 | Date | Session | Done |
 |---|---|---|
 | 2026-07-09 | 1 — Infra | Repo + compose (Postgres/Redis/Adminer) + Spring Boot skeleton + `application.yml` + Flyway V1 with exclusion constraint; verified live (health UP, overlap rejected). Commit `4d9f3aa` on `main`. |
+| 2026-08-03 | 8 — Holds, waitlist, occupancy | V2 migration (hold_expires_at, waitlist restructure, partial indexes). HOLD → confirm → auto-release job; waitlist join/leave/list with fair FIFO notification on cancellation AND hold expiry; occupancy rate via `generate_series` capacity; notification stub; 3 scheduled jobs. Verified: HOLD blocks the slot (409), auto-release after expiry, waitlist notified on both paths, duplicate join 422, occupancy 1/36 = 2.8%. Fixed `::date` vs `:param` parser clash. **Backend 100% of spec.** |
 | 2026-08-03 | 7 — WebSocket | STOMP over SockJS at `/ws`, `AvailabilityEvent` broadcast per club after commit. Verified with a real STOMP client: SLOT_BOOKED on booking, SLOT_RELEASED on cancel. **Backend feature-complete.** |
 | 2026-08-03 | 6 — Dashboard & Cache | Window-function analytics (running total, share of total, FILTER aggregates, busiest hours in local time) with interface projections; Redis cache on availability (30s TTL, precise eviction, 341ms→32ms). Fixed: Instant vs OffsetDateTime in projections, dashboard 403→401 rule ordering. |
 | 2026-08-02 | 5 — Availability & Booking ⭐ | Opening hours (upsert PUT), availability grid, **conflict-safe booking**, cancel, my-bookings. Business rules: past, duration, opening hours, grid alignment, cancel window. New: `BusinessRuleException`→422, `SlotUnavailableException`→409. 16/16 behaviour tests + **concurrency race test: 10 simultaneous requests → 1 success, 9 conflicts, 1 DB row**. Bug found & fixed: LazyInitializationException on `court.getClub()` in the response DTO. |
@@ -189,6 +204,8 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - [ ] **First automated tests** (JUnit + Mockito + Testcontainers) — still zero; every check so far has been manual
 - [ ] CI skeleton (GitHub Actions) + push repo to GitHub
 - [x] Week 3 — availability grid + conflict-safe booking (16/16 tests + 10-way race test green)
-- [x] Manager dashboard (window functions), Redis cache on availability, WebSocket live updates
-- [ ] **Backend feature-complete** → next: automated tests (JUnit/Mockito/Testcontainers), then GitHub Actions CI, then the Angular frontend
-- [ ] Optional/deferred: waitlist (table exists, unused), HOLD-then-confirm payment flow
+- [x] Manager dashboard (window functions + occupancy), Redis cache, WebSocket live updates
+- [x] HOLD/confirm payment flow, waitlist, scheduled jobs (release, reminders, cleanup)
+- [x] **BACKEND 100% COMPLETE against `FLAGSHIP_PROJECT_SPEC.md`** (MVP + V1; stretch items QR/i18n/photos intentionally out of scope)
+- [ ] Next: automated tests (JUnit/Mockito/Testcontainers) → GitHub Actions CI → Angular frontend
+- [ ] Hardening backlog: rate limiting, cache degradation if Redis is down, multi-node WebSocket broker

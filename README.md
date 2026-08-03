@@ -83,6 +83,8 @@ Invoke-RestMethod -Method Post http://localhost:8080/api/v1/auth/logout `
 | GET/PUT/DELETE | `/api/v1/clubs/{id}/opening-hours` | public read / staff write | weekly schedule |
 | GET | `/api/v1/courts/{id}/availability?date=` | — | slot grid (Redis-cached 30s) |
 | POST | `/api/v1/bookings` | any user | **201, or 409 if the slot is taken** |
+| POST | `/api/v1/bookings/hold` · `/api/v1/bookings/{id}/confirm` | any user | reserve while paying, then confirm (auto-released after 10 min) |
+| POST/GET/DELETE | `/api/v1/waitlist` · `/api/v1/me/waitlist` · `/api/v1/waitlist/{id}` | any user | queue for a full slot, notified FIFO when it frees |
 | GET | `/api/v1/me/bookings?upcomingOnly=` | any user | paginated bookings |
 | DELETE | `/api/v1/bookings/{id}` | owner / club staff | cancel (status → CANCELLED) |
 | GET | `/api/v1/clubs/{id}/dashboard?from=&to=` | ADMIN / owning MANAGER | revenue & occupancy analytics |

@@ -69,6 +69,13 @@ public class Booking {
     @Column(nullable = false, precision = 8, scale = 2)
     private BigDecimal price;
 
+    /**
+     * Deadline for a HOLD to become CONFIRMED (payment window). NULL for bookings
+     * that were confirmed immediately. The scheduled release job scans this column.
+     */
+    @Column(name = "hold_expires_at")
+    private OffsetDateTime holdExpiresAt;
+
     @Version
     @Column(nullable = false)
     private Long version;

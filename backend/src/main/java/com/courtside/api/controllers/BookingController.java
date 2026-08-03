@@ -47,6 +47,26 @@ public class BookingController {
         return BookingResponse.from(bookingService.create(request, currentUser));
     }
 
+    /**
+     * Reserve a slot WITHOUT confirming it: the classic payment flow. The slot is
+     * blocked for other users (the exclusion constraint counts HOLD as occupying)
+     * and is released automatically if /confirm never arrives.
+     */
+    @PostMapping("/bookings/hold")
+    @ResponseStatus(HttpStatus.CREATED)
+    public BookingResponse hold(
+            @Valid @RequestBody BookingRequest request,
+            @AuthenticationPrincipal User currentUser
+    ) {
+        return BookingResponse.from(bookingService.createHold(request, currentUser));
+    }
+
+    /** Payment succeeded (simulated) → HOLD becomes CONFIRMED. */
+    @PostMapping("/bookings/{id}/confirm")
+    public BookingResponse confirm(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
+        return BookingResponse.from(bookingService.confirmHold(id, currentUser));
+    }
+
     @GetMapping("/me/bookings")
     public PageResponse<BookingResponse> myBookings(
             @AuthenticationPrincipal User currentUser,

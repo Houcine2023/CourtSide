@@ -1,5 +1,6 @@
 package com.courtside.api.repositories;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -97,6 +98,37 @@ public interface DashboardRepository extends Repository<Booking, Long> {
             ORDER BY "revenue" DESC, c.name
             """, nativeQuery = true)
     List<CourtRow> revenueByCourt(Long clubId, OffsetDateTime from, OffsetDateTime to);
+
+    /**
+     * How many bookable slots the club OFFERED over the period — the denominator of
+     * the occupancy rate. Nothing in the tables stores this: it has to be derived from
+     * the opening hours, the slot length, and the calendar.
+     *
+     * `generate_series(from, to, '1 day')` materialises the calendar as rows — the
+     * standard PostgreSQL trick when you need days that have no data (a day with zero
+     * bookings still offers capacity, and a plain JOIN over bookings would lose it).
+     *
+     * `EXTRACT(ISODOW FROM d)` gives 1=Monday..7=Sunday, matching how we store
+     * day_of_week, so each generated day joins the right opening-hours row.
+     *
+     * FLOOR(open minutes / slot minutes) = whole slots only: a court open 08:00–22:00
+     * with 90-minute slots offers 9 slots (840/90 = 9.33), not 9.33.
+     */
+    @Query(value = """
+            SELECT COALESCE(SUM(
+                     FLOOR(EXTRACT(EPOCH FROM (oh.closes - oh.opens)) / 60 / c.slot_minutes)
+                   ), 0)
+            FROM courts c
+            JOIN opening_hours oh ON oh.club_id = c.club_id
+            -- CAST(... AS date), never the ::date shorthand: Hibernate parses ':name'
+            -- as a parameter, so ":fromDate::date" becomes a parameter literally named
+            -- "fromDate::date" and binding fails at runtime.
+            CROSS JOIN generate_series(CAST(:fromDate AS date), CAST(:toDate AS date), interval '1 day') AS d
+            WHERE c.club_id = :clubId
+              AND c.active
+              AND EXTRACT(ISODOW FROM d) = oh.day_of_week
+            """, nativeQuery = true)
+    Long capacitySlots(Long clubId, LocalDate fromDate, LocalDate toDate);
 
     /**
      * Busiest hours, in the club's local time — `AT TIME ZONE` converts the stored

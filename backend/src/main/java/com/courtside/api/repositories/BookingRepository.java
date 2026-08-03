@@ -52,6 +52,36 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             """)
     Page<Booking> findMine(Long userId, boolean upcomingOnly, OffsetDateTime now, Pageable pageable);
 
+    /**
+     * Holds whose payment window has closed. Backed by the partial index from V2,
+     * so this scan touches only HOLD rows however big the table grows.
+     */
+    @Query("""
+            select b from Booking b
+            join fetch b.court c
+            join fetch c.club
+            join fetch b.user
+            where b.status = com.courtside.api.entities.BookingStatus.HOLD
+              and b.holdExpiresAt < :now
+            """)
+    List<Booking> findExpiredHolds(OffsetDateTime now);
+
+    /**
+     * Confirmed bookings starting inside a window — used by the reminder job.
+     * The window (not "= tomorrow") makes the job idempotent-ish and tolerant of a
+     * missed run: widen the window and nothing is silently skipped.
+     */
+    @Query("""
+            select b from Booking b
+            join fetch b.court c
+            join fetch c.club
+            join fetch b.user
+            where b.status = com.courtside.api.entities.BookingStatus.CONFIRMED
+              and b.startTime >= :from
+              and b.startTime < :to
+            """)
+    List<Booking> findStartingBetween(OffsetDateTime from, OffsetDateTime to);
+
     /** Single booking with everything the ownership check and the response need. */
     @Query("""
             select b from Booking b

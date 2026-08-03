@@ -327,7 +327,33 @@ should degrade, never break.
 
 ---
 
-## 5. Honest gaps (what a reviewer will ask about)
+## 5. Holds, waitlist and scheduled work
+
+**HOLD flow** — reserve first, charge second. `POST /bookings/hold` creates a booking
+with status `HOLD` and a `hold_expires_at` deadline. The exclusion constraint already
+treats HOLD as occupying, so the slot is genuinely blocked. `POST /bookings/{id}/confirm`
+promotes it to CONFIRMED; a job releases it otherwise. Confirmation validates the
+*timestamp*, not whether the job has run — never let a scheduler define correctness.
+
+**Waitlist** — FIFO by `created_at`, which is the only ordering users perceive as fair.
+Being notified does **not** reserve the slot: announcing to everyone is simple and never
+leaves a slot locked by someone who walked away. Entries are deactivated rather than
+deleted, and the unique index only guards *active* rows so a user can re-join later.
+Both cancellation and hold expiry trigger notification, inside the same transaction —
+if the cancellation rolls back, nobody is told about a slot that is still taken.
+
+**Scheduled jobs** (`BookingJobs`, all in one class so "what runs at 3am?" is answerable):
+release expired holds (`fixedDelay`, never `fixedRate` — that can overlap itself),
+hourly reminders whose idempotency comes from the *window* rather than a flag, and a
+nightly waitlist cleanup. Each job catches its own exceptions, because a `@Scheduled`
+method that throws may never be rescheduled.
+
+**Notifications** go through one `NotificationService` that currently logs. The
+abstraction is the point: swapping in SMTP touches one file.
+
+---
+
+## 6. Honest gaps (what a reviewer will ask about)
 
 - **No automated tests yet** — every behaviour above was verified by hand. This is the
   next task, and the 10-way race test is the first thing to make permanent.
@@ -335,5 +361,5 @@ should degrade, never break.
   (fix: RabbitMQ relay or Redis pub/sub).
 - Cache does not degrade gracefully if Redis is down.
 - No rate limiting / login lockout.
-- Waitlist table exists but is unused; the HOLD → payment → CONFIRMED flow is designed
-  in the schema but not implemented.
+- Payment is simulated: `/confirm` trusts the caller instead of a payment provider's
+  webhook. The state machine is real; the money is not.

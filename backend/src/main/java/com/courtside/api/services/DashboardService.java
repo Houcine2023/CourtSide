@@ -66,6 +66,14 @@ public class DashboardService {
                 ? BigDecimal.ZERO
                 : BigDecimal.valueOf(cancelled * 100.0 / attempts).setScale(1, RoundingMode.HALF_UP);
 
+        // Occupancy = slots actually sold / slots the club offered. The denominator is
+        // derived from opening hours × courts × days, never stored anywhere.
+        Long capacityValue = dashboardRepository.capacitySlots(clubId, from, to);
+        long capacity = capacityValue == null ? 0 : capacityValue;
+        BigDecimal occupancyRate = capacity == 0
+                ? BigDecimal.ZERO
+                : BigDecimal.valueOf(confirmed * 100.0 / capacity).setScale(1, RoundingMode.HALF_UP);
+
         List<DashboardResponse.WeekPoint> weeks = dashboardRepository
                 .revenueByWeek(clubId, start, end).stream()
                 .map(r -> new DashboardResponse.WeekPoint(
@@ -90,7 +98,8 @@ public class DashboardService {
 
         return new DashboardResponse(
                 clubId, from, to,
-                new DashboardResponse.Summary(confirmed, cancelled, revenue, cancellationRate),
+                new DashboardResponse.Summary(confirmed, cancelled, revenue, cancellationRate,
+                        capacity, occupancyRate),
                 weeks, courts, hours);
     }
 }
