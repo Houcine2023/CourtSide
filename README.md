@@ -76,6 +76,17 @@ Invoke-RestMethod -Method Post http://localhost:8080/api/v1/auth/logout `
 | POST | `/api/v1/auth/refresh` | refresh token | 200 + **new** token pair (rotation) |
 | POST | `/api/v1/auth/logout` | refresh token | 204 |
 | GET | `/api/v1/me` | access token | 200 + your profile |
+| GET | `/api/v1/clubs?q=&city=&page=&size=` | — | paginated clubs |
+| POST/PUT/DELETE | `/api/v1/clubs/{id}` | ADMIN / owning MANAGER | club CRUD |
+| GET | `/api/v1/clubs/{id}/courts` | — | courts of a club |
+| POST | `/api/v1/clubs/{id}/courts` · PUT/DELETE `/api/v1/courts/{id}` | ADMIN / owning MANAGER | court CRUD (DELETE = deactivate) |
+| GET/PUT/DELETE | `/api/v1/clubs/{id}/opening-hours` | public read / staff write | weekly schedule |
+| GET | `/api/v1/courts/{id}/availability?date=` | — | slot grid (Redis-cached 30s) |
+| POST | `/api/v1/bookings` | any user | **201, or 409 if the slot is taken** |
+| GET | `/api/v1/me/bookings?upcomingOnly=` | any user | paginated bookings |
+| DELETE | `/api/v1/bookings/{id}` | owner / club staff | cancel (status → CANCELLED) |
+| GET | `/api/v1/clubs/{id}/dashboard?from=&to=` | ADMIN / owning MANAGER | revenue & occupancy analytics |
+| WS | `/ws` → subscribe `/topic/clubs/{id}/availability` | — | live SLOT_BOOKED / SLOT_RELEASED |
 
 Access token = JWT, 15 min. Refresh token = opaque random string, 7 days, stored **hashed**.
 

@@ -39,7 +39,12 @@ public class SecurityConfig {
             .permitAll()
             .requestMatchers(
                 "/api/v1/auth/**",
-                "/actuator/health"
+                "/actuator/health",
+                // The STOMP handshake (and its SockJS fallback URLs). The events
+                // carry no private data — only "this slot changed" — so a public
+                // read-only feed is acceptable here. Anything user-specific would
+                // need authentication at the handshake instead.
+                "/ws/**"
             )
             .permitAll()
             // The dashboard is a GET nested under /clubs/**, so it would be swallowed

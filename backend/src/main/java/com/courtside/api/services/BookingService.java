@@ -17,6 +17,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.courtside.api.dtos.AvailabilityEvent;
 import com.courtside.api.dtos.BookingRequest;
 import com.courtside.api.entities.Booking;
 import com.courtside.api.entities.BookingStatus;
@@ -40,6 +41,7 @@ public class BookingService {
     private final OpeningHoursRepository openingHoursRepository;
     private final CourtService courtService;
     private final CacheManager cacheManager;
+    private final AvailabilityEventPublisher eventPublisher;
 
     @Value("${app.timezone:Africa/Tunis}")
     private String timezone;
@@ -51,11 +53,13 @@ public class BookingService {
     public BookingService(BookingRepository bookingRepository,
                           OpeningHoursRepository openingHoursRepository,
                           CourtService courtService,
-                          CacheManager cacheManager) {
+                          CacheManager cacheManager,
+                          AvailabilityEventPublisher eventPublisher) {
         this.bookingRepository = bookingRepository;
         this.openingHoursRepository = openingHoursRepository;
         this.courtService = courtService;
         this.cacheManager = cacheManager;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -121,6 +125,9 @@ public class BookingService {
             // raw 500 instead of a clean 409.
             Booking saved = bookingRepository.saveAndFlush(booking);
             evictAvailability(court, saved.getStartTime());
+            // Broadcast AFTER commit (see the publisher): everyone watching this club
+            // sees the slot turn red without refreshing.
+            eventPublisher.publish(saved, AvailabilityEvent.Type.SLOT_BOOKED);
             return saved;
         } catch (DataIntegrityViolationException e) {
             // The exclusion constraint rejected us: someone else committed the same
@@ -171,6 +178,7 @@ public class BookingService {
         booking.setStatus(BookingStatus.CANCELLED);
         // The slot is free again — the cached grid must not keep showing it as taken.
         evictAvailability(booking.getCourt(), booking.getStartTime());
+        eventPublisher.publish(booking, AvailabilityEvent.Type.SLOT_RELEASED);
         return booking;
     }
 

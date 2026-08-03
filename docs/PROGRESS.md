@@ -150,11 +150,22 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - Correctness argument for caching availability: a stale grid is harmless because the booking path re-checks and the DB constraint has the final word. **Never cache anything whose staleness could corrupt data.**
 - Evict precisely (one court + one day), not the whole cache. Measured: 341ms cold → 32ms warm, entry evicted on every booking/cancellation.
 
+### Session 7 — WebSocket live availability (2026-08-03)
+- Raw WebSocket is a byte pipe with no notion of topics; **STOMP** adds SUBSCRIBE/SEND semantics — that is why a broadcast feature uses it. SockJS adds transport fallback when a proxy blocks WebSocket.
+- **Publish AFTER commit**, never inside the transaction: a rollback would leave subscribers greying out a slot that is actually free, with nothing to correct them. `TransactionSynchronizationManager.registerSynchronization(...).afterCommit()`.
+- A failed broadcast must never fail the booking that already committed — catch and log; the client sees the truth on its next refresh.
+- **One topic per club** (`/topic/clubs/{id}/availability`): fine-grained topics keep broadcast cheap. A client watching one club is not woken by every booking in the country.
+- The event payload carries **no private data** (no user, no price, no booking id) because anyone may subscribe — only "this slot changed".
+- The in-memory `SimpleBroker` works for one instance; with several nodes a client on node A never sees an event from node B → external relay (RabbitMQ) or Redis pub/sub.
+- Server is the only publisher: no client-to-server destinations are accepted, which removes a whole class of abuse.
+
 ## Session log
 
 | Date | Session | Done |
 |---|---|---|
 | 2026-07-09 | 1 — Infra | Repo + compose (Postgres/Redis/Adminer) + Spring Boot skeleton + `application.yml` + Flyway V1 with exclusion constraint; verified live (health UP, overlap rejected). Commit `4d9f3aa` on `main`. |
+| 2026-08-03 | 7 — WebSocket | STOMP over SockJS at `/ws`, `AvailabilityEvent` broadcast per club after commit. Verified with a real STOMP client: SLOT_BOOKED on booking, SLOT_RELEASED on cancel. **Backend feature-complete.** |
+| 2026-08-03 | 6 — Dashboard & Cache | Window-function analytics (running total, share of total, FILTER aggregates, busiest hours in local time) with interface projections; Redis cache on availability (30s TTL, precise eviction, 341ms→32ms). Fixed: Instant vs OffsetDateTime in projections, dashboard 403→401 rule ordering. |
 | 2026-08-02 | 5 — Availability & Booking ⭐ | Opening hours (upsert PUT), availability grid, **conflict-safe booking**, cancel, my-bookings. Business rules: past, duration, opening hours, grid alignment, cancel window. New: `BusinessRuleException`→422, `SlotUnavailableException`→409. 16/16 behaviour tests + **concurrency race test: 10 simultaneous requests → 1 success, 9 conflicts, 1 DB row**. Bug found & fixed: LazyInitializationException on `court.getClub()` in the response DTO. |
 | 2026-08-02 | 4 — Clubs & Courts + RBAC | He rewrote `RefreshToken` (broke 7 things: missing `@Table`, `user_id` field name, `long` id, no `@CreationTimestamp`, no `@Column` metadata) → fixed with explanations; `.vscode/settings.json` added so the Java extension imports the Maven project in `backend/`. Built: `Club`/`Court`/`Sport` entities, repositories with fetch joins, DTOs (+`PageResponse`), `NotFoundException`, 403/404/409 handlers, `ClubService`/`CourtService` with ownership rules, `ClubController`/`CourtController` with `@PreAuthorize`, public GETs. **Verification caught 3 real bugs** (untyped NULL in JPQL, LazyInitializationException on DTO mapping, admin edit wiping the manager) — all fixed, 18/18 tests green. |
 | 2026-08-02 | 3 — Refresh tokens | He wrote the repository (correct) + an empty entity file. Claude completed the session with teaching comments: `RefreshToken` entity, JOIN FETCH query, `RefreshTokenService` (SecureRandom + SHA-256 hex, issue/consume/revoke/revokeAllForUser), rotation + **reuse detection**, `/auth/refresh` + `/auth/logout` (204), `AuthResponse` pair, configurable TTL, `@Scheduled` cleanup job. Fixed a **port conflict** (native postgres on 5432 → container moved to 5433). All 7 behavior tests green; DB holds only 64-char hashes. |
@@ -178,4 +189,6 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - [ ] **First automated tests** (JUnit + Mockito + Testcontainers) — still zero; every check so far has been manual
 - [ ] CI skeleton (GitHub Actions) + push repo to GitHub
 - [x] Week 3 — availability grid + conflict-safe booking (16/16 tests + 10-way race test green)
-- [ ] Remaining backend: manager dashboard (window functions), Redis cache on availability, WebSocket live updates, waitlist
+- [x] Manager dashboard (window functions), Redis cache on availability, WebSocket live updates
+- [ ] **Backend feature-complete** → next: automated tests (JUnit/Mockito/Testcontainers), then GitHub Actions CI, then the Angular frontend
+- [ ] Optional/deferred: waitlist (table exists, unused), HOLD-then-confirm payment flow
