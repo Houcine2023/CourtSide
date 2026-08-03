@@ -135,6 +135,21 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - Cancelling = status change, not deletion: the constraint ignores CANCELLED rows, so the slot frees up while the history survives (proved in the DB: a CANCELLED and a CONFIRMED row share the same start time).
 - PowerShell gotcha for testing: `Start-Job` dies with the shell; JSON dates come back as **strings**, not DateTime.
 
+### Session 6 — dashboard (window functions) & Redis cache (2026-08-03)
+- **`SUM(SUM(x)) OVER ()`** — empty OVER() = the grand total on every row, the idiomatic way to compute a percentage of a total without a subquery. Verified: 57.1% + 42.9% = 100%.
+- **`SUM(SUM(x)) OVER (ORDER BY week)`** = running total. Window functions run AFTER GROUP BY, which is why they can take an aggregate as input.
+- **`COUNT(*) FILTER (WHERE ...)`** — several different aggregates over the same rows in one pass (cleaner than `COUNT(CASE WHEN ...)`).
+- `LEFT JOIN` in reporting keeps zero-activity rows visible (a court nobody books is exactly what a manager needs to see); `NULLIF` guards division by zero.
+- `AT TIME ZONE` before `EXTRACT(HOUR ...)`, or a 20:00 booking in Tunis is reported as 19:00 UTC.
+- **Interface projections** map native-query columns to getters — but do NO type conversion: `date_trunc` returns TIMESTAMPTZ → JDBC gives `Instant`, so declaring `OffsetDateTime` fails at runtime. Declare what the driver actually returns and convert in the service.
+- Query-only repositories can `extend Repository<T,ID>` instead of `JpaRepository` — no `save()`, no `deleteAll()`. Least privilege applies to APIs too.
+- **Rule order bit again**: the dashboard is a GET under `/clubs/**` (public), so it was swallowed by the permitAll rule and anonymous callers got 403 from `@PreAuthorize` instead of 401. Specific rules must precede general ones.
+- Ownership check on the dashboard blocks **IDOR** — a manager changing the club id in the URL cannot read a competitor's revenue.
+- Always cap a reporting date range, or one request scans the whole table.
+- **Caching**: `@Cacheable` needs `@EnableCaching` (silent-no-op family again). The key must contain every input that changes the result. Cache JSON (readable, survives refactors) not Java serialisation, and restrict polymorphic typing to your own packages — deserialising arbitrary class names is an RCE vector.
+- Correctness argument for caching availability: a stale grid is harmless because the booking path re-checks and the DB constraint has the final word. **Never cache anything whose staleness could corrupt data.**
+- Evict precisely (one court + one day), not the whole cache. Measured: 341ms cold → 32ms warm, entry evicted on every booking/cancellation.
+
 ## Session log
 
 | Date | Session | Done |

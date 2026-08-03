@@ -42,6 +42,12 @@ public class SecurityConfig {
                 "/actuator/health"
             )
             .permitAll()
+            // The dashboard is a GET nested under /clubs/**, so it would be swallowed
+            // by the public rule below (first match wins). It must come FIRST.
+            // Without this, anonymous callers get 403 from @PreAuthorize instead of a
+            // correct 401 — the data stays safe, but the status code lies.
+            .requestMatchers(HttpMethod.GET, "/api/v1/clubs/*/dashboard")
+            .authenticated()
             // Browsing clubs and courts is public — visitors must be able to see
             // what a club offers before creating an account. Only GET: the write
             // verbs on the same paths still fall through to authenticated().

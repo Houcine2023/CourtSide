@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +50,16 @@ public class AvailabilityService {
         this.bookingRepository = bookingRepository;
     }
 
+    /**
+     * @Cacheable: on a hit the method body never runs — Spring returns the cached
+     * value straight from Redis. The key must contain EVERY input that changes the
+     * result (court + date), otherwise two different requests would share one entry.
+     *
+     * Correctness note: a stale grid here is harmless. Even if the cache lied and
+     * showed a free slot, the booking itself re-checks and the database constraint
+     * has the final word — the cache can never cause a double booking.
+     */
+    @Cacheable(cacheNames = "availability", key = "#courtId + ':' + #date")
     @Transactional(readOnly = true)
     public AvailabilityResponse getForDay(Long courtId, LocalDate date) {
         Court court = courtService.getById(courtId);

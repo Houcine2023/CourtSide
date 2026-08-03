@@ -1,12 +1,15 @@
 package com.courtside.api.services;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +39,7 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final OpeningHoursRepository openingHoursRepository;
     private final CourtService courtService;
+    private final CacheManager cacheManager;
 
     @Value("${app.timezone:Africa/Tunis}")
     private String timezone;
@@ -46,10 +50,30 @@ public class BookingService {
 
     public BookingService(BookingRepository bookingRepository,
                           OpeningHoursRepository openingHoursRepository,
-                          CourtService courtService) {
+                          CourtService courtService,
+                          CacheManager cacheManager) {
         this.bookingRepository = bookingRepository;
         this.openingHoursRepository = openingHoursRepository;
         this.courtService = courtService;
+        this.cacheManager = cacheManager;
+    }
+
+    /**
+     * A booking just changed one day of one court: drop that cache entry so the next
+     * reader recomputes the grid.
+     *
+     * Done by hand rather than with @CacheEvict because the cache key is
+     * "courtId:localDate" and the local date only exists after converting the stored
+     * instant into the club's zone — a SpEL expression cannot do that readably.
+     *
+     * Evicting one precise key (not the whole cache) keeps every other court's grid warm.
+     */
+    private void evictAvailability(Court court, OffsetDateTime start) {
+        Cache cache = cacheManager.getCache("availability");
+        if (cache != null) {
+            LocalDate localDate = start.atZoneSameInstant(ZoneId.of(timezone)).toLocalDate();
+            cache.evict(court.getId() + ":" + localDate);
+        }
     }
 
     /**
@@ -95,7 +119,9 @@ public class BookingService {
             // constraint fires inside this try block. With a plain save() the flush
             // would happen at commit — outside our reach — and the user would get a
             // raw 500 instead of a clean 409.
-            return bookingRepository.saveAndFlush(booking);
+            Booking saved = bookingRepository.saveAndFlush(booking);
+            evictAvailability(court, saved.getStartTime());
+            return saved;
         } catch (DataIntegrityViolationException e) {
             // The exclusion constraint rejected us: someone else committed the same
             // slot microseconds earlier. This is the race we cannot prevent, only lose
@@ -143,6 +169,8 @@ public class BookingService {
         }
 
         booking.setStatus(BookingStatus.CANCELLED);
+        // The slot is free again — the cached grid must not keep showing it as taken.
+        evictAvailability(booking.getCourt(), booking.getStartTime());
         return booking;
     }
 

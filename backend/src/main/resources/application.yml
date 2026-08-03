@@ -26,6 +26,13 @@ spring:
   flyway:
     enabled: true # scans classpath:db/migration for V*__*.sql at startup
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      # Fail fast instead of hanging a request for 60s when Redis is down.
+      timeout: 2s
+
 management:
   endpoints:
     web:
