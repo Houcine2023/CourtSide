@@ -173,6 +173,21 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - Waitlist design: notifying does **not** reserve. Announcing to everyone is fair and never leaves a slot locked by someone who walked away.
 - **Lombok cascade lesson**: one real compile error (a duplicate field) makes annotation processing fail, so *every* generated getter/setter appears missing. Dozens of "cannot find symbol getX" usually means ONE genuine error — fix it and the rest evaporate.
 
+### Session 9 — the test suite & CI (2026-08-04) — 57 tests green
+- **The pyramid is about speed, not purity**: push every assertion as low as it honestly goes. Unit tests run in ~0.3s; the same rule through HTTP + a real database takes 30s. Both pass — only one gets run all day.
+- A **web slice** (`@WebMvcTest`) exists because `@PreAuthorize`, the filter chain, bean validation and `@ControllerAdvice` are *framework* behaviour that a unit test cannot see and an integration test is too slow to check.
+- `@WithMockUser` puts a **String** principal in the context, so `@AuthenticationPrincipal User` resolves to null. Authenticate slice tests with `authentication(...)` and the real principal type instead.
+- **A test drove a production fix**: the slice failed with "no HttpSecurity bean" because auto-configuration does not run in a slice → added `@EnableWebSecurity`, making `SecurityConfig` self-contained. Good tests improve the code, not just check it.
+- **Surefire runs `*Test`, Failsafe runs `*IT`.** Naming a class `...IT` and expecting `mvn test` to run it means it silently never runs — the worst possible failure mode for a test. Failsafe also splits `integration-test` from `verify` so teardown/reporting still happen after a failure.
+- Spring Boot 4 moved slice annotations into per-technology modules: `org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest`.
+- **Testcontainers vs Docker Engine 29**: docker-java requests `/v1.32/info` → 400. Diagnosed by talking to the named pipe by hand (`/info` → 200, `/v1.32/info` → 400). Fallback: the environment provides the database (compose locally, `services:` in CI) — same contract, one file to change back.
+- Also found on this machine: two literal garbage entries (`%PATH:` and `%`) in the Windows PATH, which crashed Testcontainers' executable lookup with `InvalidPathException`.
+- Integration tests use a **separate `courtside_test` database** + `flyway.clean-disabled: false`: every run re-proves the migrations from scratch and cannot touch development data.
+- **Schedulers off in tests** (cron `0 0 5 31 2 *` = 31 February, never): a background job firing mid-assertion is the classic flaky-suite cause.
+- The **race test is now code**: 10 threads released together by a `CountDownLatch` start gate (without it the first commits before the last starts, and the race never happens) → exactly 1 success, 9 conflicts, 1 row.
+- CI: matrix on Java 21 + 25, service containers **with health checks** (otherwise the job races the database), `~/.m2` cached, reports uploaded with `if: always()` — you need them most when the build is red.
+- Dockerfile: multi-stage (JDK only in the build stage), non-root user, `MaxRAMPercentage` because a JVM otherwise sizes its heap from the *host's* memory and gets OOM-killed, and `exec` form so the JVM is PID 1 and receives SIGTERM.
+
 ## Session log
 
 | Date | Session | Done |
@@ -207,5 +222,7 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - [x] Manager dashboard (window functions + occupancy), Redis cache, WebSocket live updates
 - [x] HOLD/confirm payment flow, waitlist, scheduled jobs (release, reminders, cleanup)
 - [x] **BACKEND 100% COMPLETE against `FLAGSHIP_PROJECT_SPEC.md`** (MVP + V1; stretch items QR/i18n/photos intentionally out of scope)
-- [ ] Next: automated tests (JUnit/Mockito/Testcontainers) → GitHub Actions CI → Angular frontend
+- [x] **Automated tests: 57 green** (49 unit/slice via Surefire + 8 integration via Failsafe) + JaCoCo
+- [x] **GitHub Actions CI**: Java 21/25 matrix, Postgres+Redis services, cached deps, artifacts, Docker image job
+- [ ] Next: push the repo to GitHub (no remote yet) → Angular frontend → deploy
 - [ ] Hardening backlog: rate limiting, cache degradation if Redis is down, multi-node WebSocket broker

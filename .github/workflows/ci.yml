@@ -1,0 +1,129 @@
+name: CI
+
+# Runs on every push and every pull request. A pipeline that only runs on main is a
+# pipeline that tells you about breakage after it is already merged.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+# A new push to the same branch cancels the previous run: no point burning minutes on
+# a commit that has already been superseded.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & test (Java ${{ matrix.java }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      # One failing combination should not hide the results of the others.
+      fail-fast: false
+      matrix:
+        # 21 is what we develop on; 25 is the next LTS. Building on both is how you
+        # find out about a coming incompatibility months before it forces your hand.
+        java: [21, 25]
+
+    # The integration tests need a real PostgreSQL and Redis. Service containers give
+    # us exactly that, reachable on localhost — the same contract the local
+    # docker-compose provides, which is why no test code changes between the two.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: courtside_test
+          POSTGRES_USER: courtside
+          POSTGRES_PASSWORD: courtside
+        ports:
+          - 5432:5432
+        # Without a health check the job would race the database and fail randomly.
+        options: >-
+          --health-cmd "pg_isready -U courtside -d courtside_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          # Caches ~/.m2 keyed on the pom files: dependencies are downloaded once,
+          # not on every run. This is usually the single biggest CI speed-up.
+          cache: maven
+
+      - name: Build, test and verify
+        working-directory: backend
+        # `verify` runs BOTH phases: surefire (unit + slice) then failsafe (integration).
+        # -B batch mode = no ANSI noise in the log; -ntp hides transfer spam.
+        run: ./mvnw -B -ntp verify
+        env:
+          # The integration profile reads these; defaults point at docker-compose
+          # locally, and here at the service containers above.
+          TEST_DB_URL: jdbc:postgresql://localhost:5432/courtside_test
+          TEST_DB_USER: courtside
+          TEST_DB_PASSWORD: courtside
+          TEST_REDIS_HOST: localhost
+          TEST_REDIS_PORT: 6379
+
+      # Uploaded even when the build fails — that is precisely when you need to read
+      # the reports. `if: always()` is the difference between a useful pipeline and a
+      # red X with no explanation.
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-java-${{ matrix.java }}
+          path: |
+            backend/target/surefire-reports/
+            backend/target/failsafe-reports/
+          retention-days: 7
+
+      - name: Upload coverage report
+        if: always() && matrix.java == 21
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage
+          path: backend/target/site/jacoco/
+          retention-days: 7
+
+  docker-image:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    # Only build an image out of code that passed every test. Ordering jobs this way
+    # makes "green pipeline" mean something.
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (no push yet)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          tags: courtside-api:${{ github.sha }}
+          # Cache layers between runs so an unchanged dependency layer is not rebuilt.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

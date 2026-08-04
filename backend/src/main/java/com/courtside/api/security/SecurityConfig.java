@@ -6,6 +6,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,6 +17,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import jakarta.servlet.DispatcherType;
 
 @Configuration
+// Registers the web-security infrastructure (notably the HttpSecurity builder this
+// class asks for). Boot's auto-configuration supplies it in a full application, but
+// declaring it makes this class self-contained — and a @WebMvcTest slice, which does
+// not run that auto-configuration, can then import SecurityConfig and test the real
+// rules instead of a stub.
+@EnableWebSecurity
 // Activates @PreAuthorize / @PostAuthorize. Without it those annotations are
 // silently ignored — every endpoint would be open to any authenticated user.
 @EnableMethodSecurity

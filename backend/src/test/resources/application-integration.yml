@@ -1,0 +1,39 @@
+# Configuration for integration tests (@ActiveProfiles("integration")).
+#
+# Every value can be overridden by an environment variable, which is exactly how CI
+# points the same tests at its own service containers — no code change, no profile
+# duplication. Locally the defaults match `docker compose up -d`.
+spring:
+  datasource:
+    # A SEPARATE database from the development one: these tests truncate tables.
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:5433/courtside_test}
+    username: ${TEST_DB_USER:courtside}
+    password: ${TEST_DB_PASSWORD:courtside}
+
+  data:
+    redis:
+      host: ${TEST_REDIS_HOST:localhost}
+      port: ${TEST_REDIS_PORT:6379}
+
+  flyway:
+    enabled: true
+    # Wipe and rebuild the schema before each test run: migrations are re-proven from
+    # scratch every time, and no leftover row from a previous run can make a test pass
+    # (or fail) for the wrong reason. Never enable this outside a test profile.
+    clean-disabled: false
+    clean-on-validation-error: true
+
+app:
+  jwt:
+    secret: integration-test-secret-key-long-enough-for-hmac-256-bits
+  jobs:
+    # Push the schedulers far into the future: a background job firing mid-assertion
+    # is the classic source of a flaky suite.
+    hold-release-ms: 3600000
+    reminder-cron: "0 0 5 31 2 *"          # 31 February: never
+    waitlist-cleanup-cron: "0 0 5 31 2 *"
+
+logging:
+  level:
+    org.flywaydb: WARN
+    org.hibernate.SQL: WARN

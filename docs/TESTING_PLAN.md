@@ -74,7 +74,18 @@ Why this layer at all? Because `@PreAuthorize`, the filter chain, validation and
 `@ControllerAdvice` are **framework behaviour** — a unit test cannot see them, and an
 integration test would be a slow way to check a status code.
 
-### 2.3 Integration tests — `@SpringBootTest` + Testcontainers
+### 2.3 Integration tests — `@SpringBootTest` + a real PostgreSQL
+
+> **Implementation note (what actually happened).** The plan was Testcontainers.
+> It could not start a container on this machine: its bundled docker-java client
+> negotiates an old Docker API version and Engine 29 rejects it — `GET /v1.32/info`
+> returns **400** while `GET /info` returns 200. Rather than fight an upstream
+> incompatibility, the tests now take the database **from the environment**:
+> `docker compose` locally (against a separate `courtside_test` database so a
+> truncating test can never wipe development data) and GitHub Actions `services:`
+> containers in CI. Both expose the same contract — a JDBC URL — so no test knows
+> the difference, and `AbstractIntegrationTest` is the single file to change if
+> Testcontainers becomes viable again.
 
 Real PostgreSQL in Docker, real Flyway, real SQL. Reserved for what *only* a real
 database can prove:
