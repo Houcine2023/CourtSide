@@ -28,7 +28,26 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<testcontainers.version>1.21.3</testcontainers.version>
 	</properties>
+
+	<!--
+		dependencyManagement declares VERSIONS without adding dependencies.
+		Importing the Testcontainers BOM means every testcontainers artifact we use
+		(postgresql, junit-jupiter, and their shared core) is pinned to one consistent
+		version — the cure for "works on my machine" version drift between modules.
+	-->
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>testcontainers-bom</artifactId>
+				<version>${testcontainers.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -109,6 +128,33 @@
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- @WithMockUser and friends: authenticate a request inside a slice test. -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!--
+			Testcontainers: starts a REAL PostgreSQL in Docker for the test run.
+			Not H2: H2 has no exclusion constraints, no generate_series, no tstzrange —
+			testing against a different database would mean testing a different app.
+		-->
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- Gives @ServiceConnection: wires the container's URL/credentials into Spring. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<!-- Spring Security: the authentication & authorization framework -->
 <dependency>
     <groupId>org.springframework.boot</groupId>
@@ -138,6 +184,40 @@
 
 	<build>
 		<plugins>
+			<!--
+				JaCoCo: instruments the bytecode during tests and reports which lines ran.
+				`prepare-agent` must run BEFORE the tests, `report` after — hence the two
+				executions. Coverage is a diagnostic, never a target: it shows what was
+				executed, never what was actually verified.
+			-->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.13</version>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<excludes>
+						<!-- No logic to verify here; counting them would only flatter the number. -->
+						<exclude>**/dtos/**</exclude>
+						<exclude>**/entities/**</exclude>
+						<exclude>**/CourtsideApiApplication.class</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
