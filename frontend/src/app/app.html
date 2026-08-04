@@ -1,0 +1,26 @@
+<header class="navbar">
+  <a class="brand" routerLink="/clubs">
+    Court<span class="accent">Side</span>
+  </a>
+
+  <nav>
+    <a routerLink="/clubs" routerLinkActive="active">Clubs</a>
+
+    @if (auth.isLoggedIn()) {
+      <a routerLink="/my-bookings" routerLinkActive="active">My bookings</a>
+      <span class="who">{{ auth.currentUser()?.fullName }}</span>
+      <button class="btn ghost" (click)="auth.logout()">Sign out</button>
+    } @else {
+      <a routerLink="/login" routerLinkActive="active">Sign in</a>
+      <a class="btn primary small" routerLink="/register">Create account</a>
+    }
+  </nav>
+</header>
+
+<main>
+  <router-outlet />
+</main>
+
+<footer class="footer">
+  <span>CourtSide — book a court in seconds</span>
+</footer>

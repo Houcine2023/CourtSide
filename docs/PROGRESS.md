@@ -188,6 +188,18 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - CI: matrix on Java 21 + 25, service containers **with health checks** (otherwise the job races the database), `~/.m2` cached, reports uploaded with `if: always()` — you need them most when the build is red.
 - Dockerfile: multi-stage (JDK only in the build stage), non-root user, `MaxRAMPercentage` because a JVM otherwise sizes its heap from the *host's* memory and gets OOM-killed, and `exec` form so the JVM is PID 1 and receives SIGTERM.
 
+### Session 10 — Angular frontend foundation (2026-08-04)
+- **Signals for auth state**: synchronously readable (`auth.isLoggedIn()` in a guard, no subscription) and templates re-render without `async`. Private writable signal + `asReadonly()` so nothing outside can corrupt the state.
+- **The refresh interceptor's hardest part is concurrency**: a functional interceptor runs once *per request*, so refresh state must live at MODULE scope. Otherwise ten requests expiring together fire ten refreshes, nine of them replay an already-used refresh token, and the backend's reuse detection logs the user out — correctly. The queue (`BehaviorSubject` + `filter` + `take(1)`) is what prevents it.
+- Never attach or refresh tokens on `/auth/**`: sending an expired token to `/auth/refresh` is an infinite loop.
+- `HttpRequest` is immutable — `clone()` to add a header, or retries and other interceptors break.
+- **Guards are UX, not security**: anyone can edit the JS and reach the route; they just find an empty page because every API call behind it is refused. Say this in interviews.
+- **CORS avoided rather than loosened**: dev uses relative URLs + the dev-server proxy, so the browser sees one origin — same as production behind a reverse proxy. Loosening the API's CORS just to make `ng serve` work is how permissive production configs are born.
+- `catchError` must sit INSIDE `switchMap`: caught outside, an error kills the outer stream and the search box stops working forever after one failure.
+- `inject()` only works in an injection context → `DestroyRef` must be a field initialiser, not resolved in `ngOnInit`.
+- Lazy `loadComponent` on every route from commit one: 99 kB initial, 25.6 kB transferred.
+- Verified the production `fileReplacements` swap by grepping the built bundle for `localhost:8080` — absent.
+
 ## Session log
 
 | Date | Session | Done |
@@ -224,5 +236,8 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - [x] **BACKEND 100% COMPLETE against `FLAGSHIP_PROJECT_SPEC.md`** (MVP + V1; stretch items QR/i18n/photos intentionally out of scope)
 - [x] **Automated tests: 57 green** (49 unit/slice via Surefire + 8 integration via Failsafe) + JaCoCo
 - [x] **GitHub Actions CI**: Java 21/25 matrix, Postgres+Redis services, cached deps, artifacts, Docker image job
-- [ ] Next: push the repo to GitHub (no remote yet) → Angular frontend → deploy
+- [x] Angular frontend foundation: auth (signals), refresh interceptor, guards, clubs typeahead, my-bookings
+- [ ] **Push to GitHub** (no remote yet — needs your login; `gh` CLI not installed)
+- [ ] Frontend remaining: club detail + availability grid, slot-picker CVA, booking flow, WebSocket live updates, manager dashboard, Playwright e2e
+- [ ] Then: deploy (Fly.io / Railway / Azure) and put the URL on the CV
 - [ ] Hardening backlog: rate limiting, cache degradation if Redis is down, multi-node WebSocket broker

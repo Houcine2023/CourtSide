@@ -1,0 +1,19 @@
+{
+  "//": [
+    "Dev-server proxy: the browser sees ONE origin (localhost:4200), so the browser's",
+    "same-origin policy is satisfied and CORS never enters the picture during",
+    "development. In production the API sits behind the same host anyway, which is why",
+    "environment.prod.ts uses relative URLs — dev and prod behave the same way."
+  ],
+  "/api": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/ws": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "ws": true,
+    "changeOrigin": true
+  }
+}

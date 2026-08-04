@@ -1,0 +1,121 @@
+/* ============================================================
+   CourtSide — global styles
+   Design tokens first, then components. Every colour and radius is a variable so a
+   restyle is one block, not a search across twenty files.
+   ============================================================ */
+
+:root {
+  --bg: #0f1720;
+  --surface: #17212b;
+  --surface-2: #1e2b38;
+  --border: rgba(255, 255, 255, 0.09);
+  --text: #e6edf5;
+  --text-dim: #93a4b8;
+  --accent: #2dd4a7;
+  --accent-ink: #05231b;
+  --danger: #f87171;
+  --radius: 12px;
+  --max-width: 1080px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+a { color: inherit; text-decoration: none; }
+h1, h2 { margin: 0 0 0.25rem; line-height: 1.25; }
+.muted { color: var(--text-dim); margin: 0.25rem 0; }
+.accent { color: var(--accent); }
+
+/* ---------- layout ---------- */
+.navbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; padding: 0.9rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(15, 23, 32, 0.9);
+  position: sticky; top: 0; backdrop-filter: blur(10px); z-index: 10;
+}
+.brand { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.3px; }
+.navbar nav { display: flex; align-items: center; gap: 1.1rem; font-size: 0.94rem; }
+.navbar nav a { color: var(--text-dim); }
+.navbar nav a:hover, .navbar nav a.active { color: var(--text); }
+.who { color: var(--text-dim); font-size: 0.85rem; }
+
+main { min-height: calc(100vh - 130px); }
+.page { width: min(var(--max-width), 92%); margin: 2rem auto; }
+.page-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+.footer { border-top: 1px solid var(--border); padding: 1.2rem; text-align: center; color: var(--text-dim); font-size: 0.85rem; }
+
+/* ---------- forms ---------- */
+input[type='text'], input[type='email'], input[type='password'], input[type='search'] {
+  width: 100%; padding: 0.65rem 0.85rem; margin-bottom: 0.2rem;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 10px; font-size: 0.95rem;
+}
+input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+label { display: block; margin-top: 0.9rem; margin-bottom: 0.3rem; font-size: 0.86rem; color: var(--text-dim); }
+
+.btn {
+  display: inline-block; padding: 0.6rem 1.1rem; border-radius: 10px;
+  border: 1px solid transparent; font-size: 0.92rem; font-weight: 600;
+  cursor: pointer; transition: transform 0.15s ease, opacity 0.15s ease;
+  background: var(--surface-2); color: var(--text);
+}
+.btn:hover:not(:disabled) { transform: translateY(-1px); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; border-color: var(--border); }
+.btn.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+.btn.small { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+
+/* ---------- feedback ---------- */
+.error { color: var(--danger); font-size: 0.8rem; }
+.alert {
+  margin-top: 1rem; padding: 0.7rem 0.9rem; border-radius: 10px;
+  background: rgba(248, 113, 113, 0.12); border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fecaca; font-size: 0.9rem;
+}
+.empty { color: var(--text-dim); padding: 2rem 0; text-align: center; }
+
+/* ---------- cards ---------- */
+.card {
+  display: block; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.1rem;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+a.card:hover { border-color: var(--accent); transform: translateY(-3px); }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.city { color: var(--accent); font-size: 0.9rem; margin: 0 0 0.3rem; }
+.badge { display: inline-block; margin-top: 0.6rem; font-size: 0.75rem; color: var(--text-dim); }
+
+.auth-card {
+  width: min(420px, 92%); margin: 3.5rem auto; padding: 2rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.auth-card .btn { width: 100%; margin-top: 1.4rem; }
+
+.filters { display: grid; grid-template-columns: 2fr 1fr; gap: 0.8rem; }
+
+/* ---------- bookings ---------- */
+.booking-list { list-style: none; padding: 0; display: grid; gap: 0.8rem; }
+.booking { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.booking.cancelled { opacity: 0.55; }
+.booking-actions { display: flex; align-items: center; gap: 0.9rem; }
+.price { font-weight: 700; }
+.status { font-size: 0.72rem; padding: 0.15rem 0.55rem; border-radius: 999px; border: 1px solid var(--border); }
+.status-confirmed { color: var(--accent); border-color: rgba(45, 212, 167, 0.4); }
+.status-cancelled { color: var(--danger); border-color: rgba(248, 113, 113, 0.4); }
+.status-hold { color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); }
+.toggle { display: flex; align-items: center; gap: 0.45rem; color: var(--text-dim); font-size: 0.88rem; margin: 0; }
+.toggle input { width: auto; }
+
+@media (max-width: 640px) {
+  .filters { grid-template-columns: 1fr; }
+  .navbar { flex-wrap: wrap; }
+}
