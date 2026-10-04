@@ -1,0 +1,295 @@
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="hero-glow" aria-hidden="true"></div>
+
+  <div class="hero-content">
+    <p class="hero-eyebrow">
+      <span class="pulse" aria-hidden="true"></span>
+      Live availability across Tunisia
+    </p>
+
+    <h1 class="hero-title">
+      Book a court in<br />
+      <span class="gradient-text">under a minute.</span>
+    </h1>
+
+    <p class="hero-lede">
+      CourtSide shows you exactly which slots are free at every padel, tennis and squash
+      club — then holds one for you while you decide. No phone calls, no waiting on hold.
+    </p>
+
+    <form class="hero-search" (submit)="$event.preventDefault(); searchFromHero()">
+      <label class="sr-only" for="hero-search">Search clubs by name, city or address</label>
+      <input
+        type="search"
+        id="hero-search"
+        name="hero-search"
+        placeholder="Try “La Marsa” or “padel”…"
+        [value]="query()"
+        (input)="updateQuery($any($event.target).value)"
+      />
+      <button type="submit" class="btn btn-primary">Find courts</button>
+    </form>
+
+    <div class="hero-actions">
+      <a routerLink="/clubs" class="btn btn-outline">Browse all clubs</a>
+      @if (!auth.isLoggedIn()) {
+        <a routerLink="/register" class="btn btn-ghost">Create a free account</a>
+      } @else {
+        <a routerLink="/my-bookings" class="btn btn-ghost">My bookings</a>
+      }
+    </div>
+
+    @if (loading()) {
+      <ul class="hero-stats" aria-label="Platform statistics">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <li class="stat">
+            <span class="skeleton skeleton-stat"></span>
+          </li>
+        }
+      </ul>
+    } @else {
+      <ul class="hero-stats" aria-label="Platform statistics">
+        <li class="stat">
+          <strong>{{ stats().clubs }}</strong>
+          <span>clubs</span>
+        </li>
+        <li class="stat">
+          <strong>{{ stats().courts }}</strong>
+          <span>bookable courts</span>
+        </li>
+        <li class="stat">
+          <strong>{{ stats().cities }}</strong>
+          <span>cities</span>
+        </li>
+        <li class="stat">
+          <strong>{{ stats().sports }}</strong>
+          <span>sports</span>
+        </li>
+      </ul>
+    }
+  </div>
+</section>
+
+<!-- ============ FINDER ============ -->
+<section class="finder" id="finder">
+  <header class="section-header">
+    <h2>Find your court</h2>
+    <p class="muted">Filter by city or sport — the results update as you type.</p>
+  </header>
+
+  <div class="finder-controls">
+    <div class="finder-search">
+      <label class="sr-only" for="club-search">Search clubs</label>
+      <input
+        type="search"
+        id="club-search"
+        name="club-search"
+        placeholder="Search by name, city or address…"
+        [value]="query()"
+        (input)="updateQuery($any($event.target).value)"
+      />
+    </div>
+
+    <div class="chip-row" role="group" aria-label="Filter by city">
+      @for (city of cities(); track city) {
+        <button
+          type="button"
+          class="chip chip-filter"
+          [class.is-active]="activeCity() === city"
+          [attr.aria-pressed]="activeCity() === city"
+          (click)="toggleCity(city)"
+        >
+          {{ city }}
+        </button>
+      }
+    </div>
+
+    <div class="chip-row" role="group" aria-label="Filter by sport">
+      @for (sport of sports; track sport.value) {
+        <button
+          type="button"
+          class="chip chip-filter"
+          [class.is-active]="activeSport() === sport.value"
+          [attr.aria-pressed]="activeSport() === sport.value"
+          (click)="toggleSport(sport.value)"
+        >
+          <span aria-hidden="true">{{ sport.icon }}</span>
+          {{ sport.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="finder-meta">
+    <p class="muted" aria-live="polite">
+      @if (loading()) {
+        Loading clubs…
+      } @else {
+        Showing <strong>{{ clubs().length }}</strong>
+        of {{ allClubs().length }} club(s)
+      }
+    </p>
+    @if (hasFilters()) {
+      <button type="button" class="btn btn-ghost btn-sm" (click)="clearFilters()">Clear filters</button>
+    }
+  </div>
+
+  @if (failed()) {
+    <div class="alert alert-error" role="alert">
+      We couldn't load the club list. Please refresh the page to try again.
+    </div>
+  } @else if (clubs().length > 0) {
+    <div class="club-grid">
+      @for (club of clubs(); track club.id) {
+        <article class="club-card card card-interactive">
+          <header class="club-card-header">
+            <h3 class="club-name">
+              <a [routerLink]="['/clubs', club.id]">{{ club.name }}</a>
+            </h3>
+            <span class="chip chip-neutral">{{ club.city }}</span>
+          </header>
+
+          <p class="club-address">{{ club.address }}</p>
+
+          @if (clubSports(club).length > 0) {
+            <div class="club-sports">
+              @for (sport of clubSports(club); track sport) {
+                <span class="chip">
+                  <span aria-hidden="true">{{ sportIcon(sport) }}</span>
+                  {{ sport.toLowerCase() }}
+                </span>
+              }
+            </div>
+          }
+
+          <footer class="club-card-footer">
+            <span class="subtle">
+              {{ activeCourtCount(club) }} court(s) available
+            </span>
+            @if (firstCourtId(club); as courtId) {
+              <a
+                class="btn btn-primary btn-sm"
+                [routerLink]="['/clubs', courtId, 'availability', today]"
+              >
+                Check availability
+              </a>
+            } @else {
+              <span class="chip chip-neutral">No courts listed</span>
+            }
+          </footer>
+        </article>
+      }
+    </div>
+  } @else if (!loading()) {
+    <div class="empty-state">
+      <p class="muted">No clubs match those filters.</p>
+      <button type="button" class="btn btn-outline btn-sm" (click)="clearFilters()">
+        Reset filters
+      </button>
+    </div>
+  }
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section class="how-it-works">
+  <header class="section-header">
+    <h2>How it works</h2>
+    <p class="muted">Three steps from looking to playing.</p>
+  </header>
+
+  <ol class="steps">
+    <li class="step">
+      <span class="step-number" aria-hidden="true">1</span>
+      <h3>Pick a club</h3>
+      <p>Browse every club with its courts, sports and live opening hours.</p>
+    </li>
+    <li class="step">
+      <span class="step-number" aria-hidden="true">2</span>
+      <h3>Grab a slot</h3>
+      <p>
+        See the full day as a grid. Book straight away, or hold a slot for 10 minutes
+        while your group confirms.
+      </p>
+    </li>
+    <li class="step">
+      <span class="step-number" aria-hidden="true">3</span>
+      <h3>Show up and play</h3>
+      <p>
+        Cancelling frees the slot for someone else instantly, and notifies anyone
+        waiting on the waitlist.
+      </p>
+    </li>
+  </ol>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section class="features">
+  <header class="section-header">
+    <h2>Built for real clubs</h2>
+    <p class="muted">Not just a booking form — a full operating tool.</p>
+  </header>
+
+  <div class="feature-grid">
+    <article class="feature">
+      <span class="feature-icon" aria-hidden="true">⚡</span>
+      <h3>Live slot grid</h3>
+      <p>
+        Availability refreshes the moment anyone books or cancels, so the grid is never
+        stale.
+      </p>
+    </article>
+    <article class="feature">
+      <span class="feature-icon" aria-hidden="true">⏳</span>
+      <h3>10-minute holds</h3>
+      <p>
+        Lock a slot while your friends decide. Unconfirmed holds expire on their own,
+        so nothing goes to waste.
+      </p>
+    </article>
+    <article class="feature">
+      <span class="feature-icon" aria-hidden="true">📊</span>
+      <h3>Manager dashboard</h3>
+      <p>Revenue, occupancy, court performance and your busiest hours in one view.</p>
+    </article>
+    <article class="feature">
+      <span class="feature-icon" aria-hidden="true">🔔</span>
+      <h3>Smart waitlist</h3>
+      <p>
+        When a slot frees up, the first person waiting for it is notified automatically.
+      </p>
+    </article>
+    <article class="feature">
+      <span class="feature-icon" aria-hidden="true">🕘</span>
+      <h3>Opening hours</h3>
+      <p>Set hours per weekday. Slots are only ever offered inside them.</p>
+    </article>
+    <article class="feature">
+      <span class="feature-icon" aria-hidden="true">🔒</span>
+      <h3>Roles that fit</h3>
+      <p>Members book, managers run their club, admins see everything.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta-band">
+  <div class="cta-content">
+    <h2>{{ auth.isLoggedIn() ? 'Ready to play?' : 'Ready to play?' }}</h2>
+    <p class="muted">
+      {{
+        auth.isLoggedIn()
+          ? 'Your next slot is a couple of taps away.'
+          : 'Create an account and book your first court in under a minute.'
+      }}
+    </p>
+    @if (auth.isLoggedIn()) {
+      <a routerLink="/clubs" class="btn btn-primary">Find a court</a>
+    } @else {
+      <div class="cta-actions">
+        <a routerLink="/register" class="btn btn-primary">Create account</a>
+        <a routerLink="/login" class="btn btn-outline">Sign in</a>
+      </div>
+    }
+  </div>
+</section>
