@@ -26,6 +26,12 @@ export class WebSocketService {
     import('@stomp/stompjs').then(({ Client }) => {
       const wsUrl = environment.wsUrl;
 
+      // Plain brokerURL, so stompjs builds a native WebSocket to /ws. That has to
+      // match how the backend registers its endpoint: serving SockJS here used to
+      // answer this raw handshake with HTTP 400, and pointing stompjs at the
+      // SockJS protocol instead pulled in a CommonJS-only package that throws
+      // "global is not defined" in the browser. A native WebSocket is one moving
+      // part instead of two, and every browser that matters supports it.
       this.stompClient = new Client({
         brokerURL: wsUrl,
         reconnectDelay: 5000,

@@ -34,9 +34,17 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws")
                 // The Angular dev server runs on another origin; the browser applies
                 // the same-origin policy to the WebSocket handshake too.
-                .setAllowedOriginPatterns("http://localhost:4200", "http://localhost:*")
-                // SockJS falls back to HTTP streaming/polling when a proxy blocks
-                // WebSocket — the same transport safety net used in the Skote chat.
-                .withSockJS();
+                .setAllowedOriginPatterns("http://localhost:4200", "http://localhost:*");
+        // Plain WebSocket, not .withSockJS().
+
+        // SockJS and the client disagreed: the server spoke the SockJS protocol
+        // while stompjs opened a raw WebSocket to this same path, and SockJS replied
+        // to that handshake with HTTP 400. Live availability updates therefore never
+        // arrived, and the page silently fell back to never updating.
+        //
+        // SockJS exists to reach browsers that cannot do WebSocket at all. Every
+        // browser this app supports can, so the fallback was carrying a real cost
+        // (a second transport to keep in sync) and buying nothing. A native
+        // endpoint keeps dev and production on exactly the same handshake.
     }
 }
