@@ -1,26 +1,72 @@
-<header class="navbar">
-  <a class="brand" routerLink="/clubs">
-    Court<span class="accent">Side</span>
-  </a>
+<!-- First tab stop on the page: lets keyboard users skip the nav entirely. -->
+<a class="skip-link" href="#main">Skip to main content</a>
 
-  <nav>
-    <a routerLink="/clubs" routerLinkActive="active">Clubs</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" routerLink="/" (click)="closeMenu()">
+      <span class="brand-mark" aria-hidden="true">◆</span>
+      Court<span class="brand-accent">Side</span>
+    </a>
 
-    @if (auth.isLoggedIn()) {
-      <a routerLink="/my-bookings" routerLinkActive="active">My bookings</a>
-      <span class="who">{{ auth.currentUser()?.fullName }}</span>
-      <button class="btn ghost" (click)="auth.logout()">Sign out</button>
-    } @else {
-      <a routerLink="/login" routerLinkActive="active">Sign in</a>
-      <a class="btn primary small" routerLink="/register">Create account</a>
-    }
-  </nav>
+    <!-- aria-expanded/aria-controls tell a screen reader what this button does and
+         whether the menu is currently open. -->
+    <button
+      type="button"
+      class="nav-toggle"
+      [attr.aria-expanded]="menuOpen()"
+      aria-controls="primary-nav"
+      aria-label="Toggle navigation"
+      (click)="toggleMenu()"
+    >
+      <span aria-hidden="true">☰</span>
+    </button>
+
+    <nav id="primary-nav" class="nav" [class.nav-open]="menuOpen()" aria-label="Primary">
+      <a routerLink="/" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active" (click)="closeMenu()">
+        Home
+      </a>
+      <a routerLink="/clubs" routerLinkActive="active" (click)="closeMenu()">Clubs</a>
+
+      @if (auth.isLoggedIn()) {
+        @if (auth.isStaff()) {
+          <a routerLink="/my-clubs" routerLinkActive="active" (click)="closeMenu()">
+            My Clubs
+          </a>
+          @if (dashboardLink(); as link) {
+            <a [routerLink]="link" routerLinkActive="active" (click)="closeMenu()">
+              Dashboard
+            </a>
+          }
+        }
+        <a routerLink="/my-bookings" routerLinkActive="active" (click)="closeMenu()">
+          My bookings
+        </a>
+        <a routerLink="/profile" routerLinkActive="active" (click)="closeMenu()">
+          My profile
+        </a>
+        <span class="nav-user">Hi, {{ auth.displayName() }}</span>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="auth.logout()">
+          Sign out
+        </button>
+      } @else {
+        <a routerLink="/login" routerLinkActive="active" (click)="closeMenu()">Sign in</a>
+        <a class="btn btn-primary btn-sm" routerLink="/register" (click)="closeMenu()">
+          Get started
+        </a>
+      }
+    </nav>
+  </div>
 </header>
 
-<main>
+<main id="main" tabindex="-1">
   <router-outlet />
 </main>
 
+<app-toast-container />
+
 <footer class="footer">
-  <span>CourtSide — book a court in seconds</span>
+  <div class="footer-inner">
+    <span>CourtSide — book a court in seconds</span>
+    <span class="subtle">Angular {{ angularVersion }} · Spring Boot · PostgreSQL</span>
+  </div>
 </footer>

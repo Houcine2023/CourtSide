@@ -1,0 +1,133 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(10, 14, 20, 0.82);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-inner {
+  width: min(var(--page-width), 92%);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 68px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.brand-mark {
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.brand-accent {
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  font-size: 0.94rem;
+}
+
+.nav a:not(.btn) {
+  color: var(--text-muted);
+  padding-block: 0.35rem;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.nav a:not(.btn):hover {
+  color: var(--text);
+}
+
+.nav a.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.nav-user {
+  color: var(--text-subtle);
+  font-size: 0.88rem;
+}
+
+.nav-toggle {
+  display: none;
+  background: none;
+  border: 0;
+  color: var(--text);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+}
+
+main {
+  flex: 1;
+}
+
+/* Focusable for the skip link, but no outline when reached that way — the browser
+   scrolls to it, which is feedback enough. */
+main:focus {
+  outline: none;
+}
+
+.footer {
+  border-top: 1px solid var(--border);
+  padding-block: 1.5rem;
+  margin-top: 3rem;
+}
+
+.footer-inner {
+  width: min(var(--page-width), 92%);
+  margin-inline: auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 760px) {
+  .nav-toggle {
+    display: block;
+  }
+
+  .nav {
+    position: absolute;
+    inset-inline: 0;
+    top: 68px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.9rem;
+    padding: 1.2rem 4%;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+    display: none;
+  }
+
+  .nav-open {
+    display: flex;
+  }
+}
