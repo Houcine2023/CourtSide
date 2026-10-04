@@ -1,0 +1,33 @@
+<dialog
+  #dialog
+  class="modal"
+  [attr.aria-labelledby]="labelId"
+  [attr.aria-describedby]="description() ? labelId + '-desc' : null"
+  aria-modal="true"
+  (cancel)="onCancel($event)"
+  (close)="closed.emit()"
+  (click)="onBackdropClick($event)"
+  (keydown)="onKeydown($event)"
+>
+  <header class="modal-header">
+    <div class="modal-titles">
+      <h2 class="modal-heading" [id]="labelId">{{ heading() }}</h2>
+      @if (description()) {
+        <p class="modal-description" [id]="labelId + '-desc'">{{ description() }}</p>
+      }
+    </div>
+    @if (dismissible()) {
+      <button type="button" class="modal-close" (click)="dismiss()" aria-label="Close dialog">
+        <span aria-hidden="true">✕</span>
+      </button>
+    }
+  </header>
+
+  <div class="modal-body">
+    <ng-content />
+  </div>
+
+  <footer class="modal-footer">
+    <ng-content select="[modalActions]" />
+  </footer>
+</dialog>

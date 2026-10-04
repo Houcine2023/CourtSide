@@ -1,0 +1,117 @@
+/* The native <dialog> top layer handles the backdrop and ::backdrop dimming, so
+   these rules only style the panel itself. */
+.modal {
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+  width: min(520px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden;
+}
+
+/* Browsers centre a modal dialog by default; the panel lays itself out as a
+   column so a long form scrolls its body instead of the whole dialog. */
+.modal[open] {
+  display: flex;
+  flex-direction: column;
+  animation: modal-enter var(--transition) ease-out;
+}
+
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal::backdrop {
+  background: rgba(4, 8, 14, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.35rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-titles {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.modal-heading {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.modal-description {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.modal-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.modal-close:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.modal-body {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem 1.35rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+/* The footer is optional; drop its padding when a dialog projects no actions. */
+.modal-footer:empty {
+  display: none;
+  padding: 0;
+  border-top: none;
+}
+
+@media (max-width: 480px) {
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+  }
+}
