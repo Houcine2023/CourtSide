@@ -1,9 +1,9 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { Availability, Club, Court, OpeningHours, Page } from '../models/api.models';
+import { Availability, Club, ClubRequest, Court, CourtRequest, DashboardResponse, OpeningHours, OpeningHoursRequest, Page } from '../models/api.models';
 
 /**
  * Read/write access to clubs, courts, opening hours and availability.
@@ -12,7 +12,7 @@ import { Availability, Club, Court, OpeningHours, Page } from '../models/api.mod
  * never learn what the endpoints look like. That is what makes an API change a
  * one-file edit.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class ClubService {
   private readonly http = inject(HttpClient);
   private readonly api = environment.apiUrl;
@@ -34,8 +34,9 @@ export class ClubService {
     return this.http.get<Club>(`${this.api}/clubs/${id}`);
   }
 
-  getCourts(clubId: number): Observable<Court[]> {
-    return this.http.get<Court[]>(`${this.api}/clubs/${clubId}/courts`);
+  getCourts(clubId: number, includeInactive = false): Observable<Court[]> {
+    const params = new HttpParams().set('includeInactive', includeInactive);
+    return this.http.get<Court[]>(`${this.api}/clubs/${clubId}/courts`, { params });
   }
 
   getOpeningHours(clubId: number): Observable<OpeningHours[]> {
@@ -46,5 +47,50 @@ export class ClubService {
   getAvailability(courtId: number, date: string): Observable<Availability> {
     const params = new HttpParams().set('date', date);
     return this.http.get<Availability>(`${this.api}/courts/${courtId}/availability`, { params });
+  }
+
+  /** Manager dashboard: revenue, occupancy, court performance, busiest hours. */
+  getDashboard(clubId: number, from?: string, to?: string): Observable<DashboardResponse> {
+    let params = new HttpParams();
+    if (from) params = params.set('from', from);
+    if (to) params = params.set('to', to);
+    return this.http.get<DashboardResponse>(`${this.api}/clubs/${clubId}/dashboard`, { params });
+  }
+
+  /** Create a new club (ADMIN/MANAGER). */
+  create(request: ClubRequest): Observable<Club> {
+    return this.http.post<Club>(`${this.api}/clubs`, request);
+  }
+
+  /** Update a club (ADMIN/owner MANAGER). */
+  update(id: number, request: ClubRequest): Observable<Club> {
+    return this.http.put<Club>(`${this.api}/clubs/${id}`, request);
+  }
+
+  /** Delete a club (ADMIN only). */
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/clubs/${id}`);
+  }
+
+  /** Court CRUD */
+  createCourt(clubId: number, request: CourtRequest): Observable<Court> {
+    return this.http.post<Court>(`${this.api}/clubs/${clubId}/courts`, request);
+  }
+
+  updateCourt(courtId: number, request: CourtRequest): Observable<Court> {
+    return this.http.put<Court>(`${this.api}/courts/${courtId}`, request);
+  }
+
+  deactivateCourt(courtId: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/courts/${courtId}`);
+  }
+
+  /** Opening Hours CRUD */
+  setOpeningHours(clubId: number, request: OpeningHoursRequest): Observable<OpeningHours> {
+    return this.http.put<OpeningHours>(`${this.api}/clubs/${clubId}/opening-hours`, request);
+  }
+
+  deleteOpeningHours(clubId: number, dayOfWeek: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/clubs/${clubId}/opening-hours/${dayOfWeek}`);
   }
 }

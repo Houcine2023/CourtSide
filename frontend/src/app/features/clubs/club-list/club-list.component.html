@@ -1,0 +1,40 @@
+@if (loading()) {
+  <div class="club-list-loading">
+    <span class="spinner" aria-hidden="true"></span>
+    <p>Searching clubs…</p>
+  </div>
+} @else if (clubs().length > 0) {
+  <div class="club-grid">
+    @for (club of clubs(); track club.id) {
+      <article class="club-card" [routerLink]="['/clubs', club.id]">
+        <header class="club-card-header">
+          <h3 class="club-name">{{ club.name }}</h3>
+          <span class="club-city">{{ club.city }}</span>
+        </header>
+        <p class="club-address">{{ club.address }}</p>
+        <footer class="club-card-footer">
+          @if (club.managerName) {
+            <span class="club-manager">Managed by {{ club.managerName }}</span>
+          }
+          <span class="btn btn-ghost btn-sm">View details</span>
+        </footer>
+      </article>
+    }
+  </div>
+
+  @if (total() > clubs().length) {
+    <p class="club-count">
+      Showing {{ clubs().length }} of {{ total() }} club(s)
+    </p>
+  }
+} @else {
+  <div class="club-empty">
+    <p class="muted">No clubs found matching your criteria.</p>
+  </div>
+}
+
+@if (failed()) {
+  <p class="alert alert-error" role="alert">
+    Failed to load clubs. Please try again.
+  </p>
+}

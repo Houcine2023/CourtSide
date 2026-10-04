@@ -1,0 +1,101 @@
+.club-detail {
+  width: min(var(--page-width), 92%);
+  margin-inline: auto;
+  padding-block: 2rem;
+}
+
+.club-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.club-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.club-location {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+.club-manager {
+  color: var(--text-subtle);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.club-sections {
+  display: grid;
+  gap: 2rem;
+}
+
+.section h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.opening-hours .hours-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.hours-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-elevated);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.hours-row dt {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.hours-row dd {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.club-detail-loading,
+.club-detail-error {
+  width: min(var(--page-width), 92%);
+  margin-inline: auto;
+  padding-block: 3rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.club-detail-error {
+  color: var(--danger);
+}
+
+.club-detail-error .btn {
+  margin-top: 1rem;
+}
+
+@media (max-width: 640px) {
+  .club-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .hours-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+}

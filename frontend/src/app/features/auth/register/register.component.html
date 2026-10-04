@@ -1,0 +1,81 @@
+<section class="auth-page">
+  <div class="auth-card card">
+    <header class="auth-head">
+      <h1>Create your account</h1>
+      <p class="muted">Book padel, tennis and squash courts in seconds.</p>
+    </header>
+
+    <form (submit)="$event.preventDefault(); onSubmit()" novalidate>
+      <div class="field">
+        <label for="fullName">Full name</label>
+        <input
+          id="fullName"
+          type="text"
+          autocomplete="name"
+          [value]="registerForm.fullName().value()"
+          (input)="registerForm.fullName().value.set($event.target.value)"
+          [attr.aria-invalid]="registerForm.fullName().invalid() && registerForm.fullName().touched()"
+          aria-describedby="fullName-error"
+        />
+        @if (registerForm.fullName().invalid() && registerForm.fullName().touched()) {
+          <p class="field-error" id="fullName-error" role="alert">
+            {{ registerForm.fullName().errors()[0]?.message }}
+          </p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          autocomplete="email"
+          [value]="registerForm.email().value()"
+          (input)="registerForm.email().value.set($event.target.value)"
+          [attr.aria-invalid]="registerForm.email().invalid() && registerForm.email().touched()"
+          aria-describedby="email-error"
+        />
+        @if (registerForm.email().invalid() && registerForm.email().touched()) {
+          <p class="field-error" id="email-error" role="alert">
+            {{ registerForm.email().errors()[0]?.message }}
+          </p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          autocomplete="new-password"
+          [value]="registerForm.password().value()"
+          (input)="registerForm.password().value.set($event.target.value)"
+          [attr.aria-invalid]="registerForm.password().invalid() && registerForm.password().touched()"
+          aria-describedby="password-hint password-error"
+        />
+        <!-- Announced with the input, so the requirement is known BEFORE typing
+             rather than only after an error. -->
+        <p class="subtle" id="password-hint">At least 8 characters.</p>
+        @if (registerForm.password().invalid() && registerForm.password().touched()) {
+          <p class="field-error" id="password-error" role="alert">
+            {{ registerForm.password().errors()[0]?.message }}
+          </p>
+        }
+      </div>
+
+      @if (serverError()) {
+        <p class="alert alert-error" role="alert">{{ serverError() }}</p>
+      }
+
+      <button
+        type="submit"
+        class="btn btn-primary btn-block"
+        [disabled]="registerForm().submitting()"
+      >
+        {{ registerForm().submitting() ? 'Creating…' : 'Create account' }}
+      </button>
+    </form>
+
+    <p class="auth-alt muted">Already registered? <a routerLink="/login">Sign in</a></p>
+  </div>
+</section>

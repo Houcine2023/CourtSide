@@ -1,0 +1,121 @@
+@if (loading() && clubs().length === 0) {
+  <div class="my-clubs-loading">Loading your clubs…</div>
+} @else {
+  <section class="my-clubs">
+    <header class="my-clubs-header">
+      <div>
+        <h1>My Clubs</h1>
+        <p class="subtitle">Clubs you manage</p>
+      </div>
+      @if (canManage()) {
+        <button class="btn btn-primary" (click)="openCreateDialog()">+ Create Club</button>
+      }
+    </header>
+
+    @if (error() && clubs().length > 0) {
+      <div class="alert alert-error" role="alert">{{ error() }}</div>
+    }
+
+    @if (clubs().length > 0) {
+      <div class="club-grid">
+        @for (club of clubs(); track club.id) {
+          <article class="club-card">
+            <a class="club-card-link" [routerLink]="['/clubs', club.id]">
+              <header class="club-card-header">
+                <h3 class="club-name">{{ club.name }}</h3>
+                <span class="club-city">{{ club.city }}</span>
+              </header>
+              <p class="club-address">{{ club.address }}</p>
+            </a>
+            <footer class="club-card-footer">
+              <span class="club-manager">Manager: {{ club.managerName || '—' }}</span>
+              <div class="club-actions">
+                <button class="btn btn-secondary btn-sm" (click)="openEditDialog(club)">Edit</button>
+                <button class="btn btn-danger btn-sm" (click)="deleteClub(club.id)">Delete</button>
+              </div>
+            </footer>
+          </article>
+        }
+      </div>
+    } @else {
+      <div class="my-clubs-empty">
+        @if (canManage()) {
+          <p class="muted">You don't manage any clubs yet.</p>
+          <button class="btn btn-primary" (click)="openCreateDialog()">Create your first club</button>
+        } @else {
+          <p class="muted">Club management is available to managers.</p>
+          <a routerLink="/clubs" class="btn btn-secondary">Browse clubs</a>
+        }
+      </div>
+    }
+  </section>
+}
+
+@if (error() && clubs().length === 0) {
+  <div class="my-clubs-error" role="alert">
+    <p>{{ error() }}</p>
+    <a routerLink="/clubs" class="btn btn-secondary">Back to clubs</a>
+  </div>
+}
+
+@if (showCreateDialog()) {
+  <app-modal heading="Create Club" [busy]="saving()" (closed)="closeCreateDialog()">
+    <form id="createClubForm" (ngSubmit)="createClub()" #clubForm="ngForm">
+      <div class="field">
+        <label for="name">Club Name *</label>
+        <input type="text" id="name" name="name" required [(ngModel)]="newClub().name" />
+      </div>
+      <div class="field">
+        <label for="city">City *</label>
+        <input type="text" id="city" name="city" required [(ngModel)]="newClub().city" />
+      </div>
+      <div class="field">
+        <label for="address">Address *</label>
+        <input type="text" id="address" name="address" required [(ngModel)]="newClub().address" />
+      </div>
+    </form>
+
+    <div modalActions>
+      <button type="button" class="btn btn-secondary" (click)="closeCreateDialog()">Cancel</button>
+      <button
+        type="submit"
+        form="createClubForm"
+        class="btn btn-primary"
+        [disabled]="!clubForm.form.valid || saving()"
+      >
+        {{ saving() ? 'Creating…' : 'Create Club' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (showEditDialog()) {
+  <app-modal heading="Edit Club" [busy]="saving()" (closed)="closeEditDialog()">
+    <form id="editClubForm" (ngSubmit)="updateClub()" #editFormRef="ngForm">
+      <div class="field">
+        <label for="editName">Club Name *</label>
+        <input type="text" id="editName" name="name" required [(ngModel)]="editForm().name" />
+      </div>
+      <div class="field">
+        <label for="editCity">City *</label>
+        <input type="text" id="editCity" name="city" required [(ngModel)]="editForm().city" />
+      </div>
+      <div class="field">
+        <label for="editAddress">Address *</label>
+        <input type="text" id="editAddress" name="address" required [(ngModel)]="editForm().address" />
+      </div>
+    </form>
+
+    <div modalActions>
+      <button type="button" class="btn btn-secondary" (click)="closeEditDialog()">Cancel</button>
+      <button
+        type="submit"
+        form="editClubForm"
+        class="btn btn-primary"
+        [disabled]="!editFormRef.form.valid || saving()"
+      >
+        {{ saving() ? 'Saving…' : 'Update' }}
+      </button>
+    </div>
+  </app-modal>
+}

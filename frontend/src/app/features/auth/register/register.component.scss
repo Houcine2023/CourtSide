@@ -1,0 +1,40 @@
+.auth-page {
+  display: grid;
+  place-items: center;
+  padding: 3rem 1rem 5rem;
+}
+
+.auth-card {
+  width: min(430px, 100%);
+  padding: 2.2rem;
+  box-shadow: var(--shadow-lg);
+}
+
+.auth-head {
+  margin-bottom: 1.6rem;
+}
+
+.auth-head h1 {
+  font-size: 1.65rem;
+  margin-bottom: 0.35rem;
+}
+
+form {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.auth-alt {
+  margin-top: 1.6rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.auth-alt a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.auth-alt a:hover {
+  text-decoration: underline;
+}

@@ -1,0 +1,61 @@
+@if (loading()) {
+  <div class="bookings-loading">Loading your bookings…</div>
+} @else if (bookings(); as page) {
+  <section class="my-bookings">
+    <header class="bookings-header">
+      <h1>My Bookings</h1>
+      <label class="toggle">
+        <input type="checkbox" [checked]="upcomingOnly()" (change)="toggleUpcoming()" />
+        <span>Upcoming only</span>
+      </label>
+    </header>
+
+    @if (page.content.length > 0) {
+      <div class="bookings-list">
+        @for (booking of page.content; track booking.id) {
+          <article class="booking-card">
+            <header class="booking-header">
+              <div class="booking-venue">
+                <h3>{{ booking.courtName }}</h3>
+                <p class="booking-club">{{ booking.clubName }}</p>
+              </div>
+              <span class="status-badge" [class]="getStatusClass(booking.status)">
+                {{ getStatusLabel(booking.status) }}
+              </span>
+            </header>
+            <div class="booking-details">
+              <dl>
+                <dt>Date & Time</dt>
+                <dd>{{ formatDate(booking.start) }} – {{ formatDate(booking.end).split(', ').pop() }}</dd>
+                <dt>Price</dt>
+                <dd>{{ booking.price.toFixed(2) }} DT</dd>
+                <dt>Booked</dt>
+                <dd>{{ formatDate(booking.createdAt) }}</dd>
+              </dl>
+            </div>
+            <footer class="booking-actions">
+              @if (booking.status === 'HOLD') {
+                <button class="btn btn-primary btn-sm" (click)="confirmBooking(booking.id)">Confirm</button>
+              }
+              @if (booking.status === 'CONFIRMED' || booking.status === 'HOLD') {
+                <button class="btn btn-danger btn-sm" (click)="cancelBooking(booking.id)">Cancel</button>
+              }
+            </footer>
+          </article>
+        }
+      </div>
+
+      @if (page.totalPages > 1) {
+        <nav class="pagination">
+          <button class="btn btn-secondary btn-sm" (click)="prevPage()" [disabled]="page.page === 0">Previous</button>
+          <span class="page-info">Page {{ page.page + 1 }} of {{ page.totalPages }}</span>
+          <button class="btn btn-secondary btn-sm" (click)="nextPage()" [disabled]="page.page === page.totalPages - 1">Next</button>
+        </nav>
+      }
+    } @else {
+      <p class="muted">No bookings found.</p>
+    }
+  </section>
+} @else if (error()) {
+  <p class="alert alert-error" role="alert">{{ error() }}</p>
+}

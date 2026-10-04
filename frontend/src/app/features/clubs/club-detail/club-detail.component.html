@@ -1,0 +1,181 @@
+@if (loading() && !club()) {
+  <div class="club-detail-loading">Loading club details…</div>
+} @else if (club(); as club) {
+  <section class="club-detail">
+    <header class="club-header">
+      <div class="club-identity">
+        <h1>{{ club.name }}</h1>
+        <p class="club-location">{{ club.city }}, {{ club.address }}</p>
+      </div>
+      @if (club.managerName) {
+        <p class="club-manager">Managed by {{ club.managerName }}</p>
+      }
+    </header>
+
+    <div class="club-sections">
+      <section class="section opening-hours">
+        <header class="section-header">
+          <h2>Opening Hours</h2>
+          @if (isStaff()) {
+            <button class="btn btn-primary btn-sm" (click)="openHoursDialog()">+ Add Hours</button>
+          }
+        </header>
+        @if (openingHours().length > 0) {
+          <dl class="hours-list">
+            @for (hour of openingHours(); track hour.id) {
+              <div class="hours-row">
+                <dt>{{ getDayName(hour.dayOfWeek) }}</dt>
+                <dd>{{ formatTime(hour.opens) }} – {{ formatTime(hour.closes) }}</dd>
+                @if (isStaff()) {
+                  <div class="hours-actions">
+                    <button class="btn btn-ghost btn-sm" (click)="openHoursDialog(hour.dayOfWeek, hour)">Edit</button>
+                    <button class="btn btn-danger btn-sm" (click)="deleteHours(hour.dayOfWeek)">Remove</button>
+                  </div>
+                }
+              </div>
+            }
+          </dl>
+        } @else {
+          <p class="muted">No opening hours set.</p>
+        }
+      </section>
+
+      <section class="section courts">
+        <header class="section-header">
+          <h2>Courts</h2>
+          @if (isStaff()) {
+            <button class="btn btn-primary btn-sm" (click)="openCourtDialog()">+ Add Court</button>
+          }
+        </header>
+        <app-court-list
+          [clubId]="club.id"
+          [clubName]="club.name"
+          [showManage]="isStaff()"
+          [reloadToken]="revision()"
+          (manageCourt)="openCourtDialog($event)"
+          (deactivateCourt)="deleteCourt($event)"
+        />
+      </section>
+
+      @if (isStaff()) {
+        <section class="section staff-actions">
+          <h2>Management</h2>
+          <p class="muted">Use the buttons above to manage courts and opening hours for this club.</p>
+        </section>
+      }
+    </div>
+  </section>
+} @else if (error()) {
+  <div class="club-detail-error" role="alert">
+    <p>{{ error() }}</p>
+    <a routerLink="/clubs" class="btn btn-secondary">Back to clubs</a>
+  </div>
+}
+
+@if (showCourtDialog()) {
+  <app-modal
+    [heading]="editingCourt() ? 'Edit Court' : 'Add Court'"
+    [busy]="saving()"
+    (closed)="closeCourtDialog()"
+  >
+    <form id="courtForm" (ngSubmit)="saveCourt()" #courtFormRef="ngForm">
+      <div class="field">
+        <label for="courtName">Name *</label>
+        <input type="text" id="courtName" name="name" required [(ngModel)]="courtForm.name" />
+      </div>
+      <div class="field">
+        <label for="sport">Sport *</label>
+        <select id="sport" name="sport" required [(ngModel)]="courtForm.sport">
+          <option value="PADEL">Padel</option>
+          <option value="TENNIS">Tennis</option>
+          <option value="SQUASH">Squash</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="slotMinutes">Slot Minutes *</label>
+        <input
+          type="number"
+          id="slotMinutes"
+          name="slotMinutes"
+          required
+          min="30"
+          max="240"
+          step="15"
+          [(ngModel)]="courtForm.slotMinutes"
+        />
+      </div>
+      <div class="field">
+        <label for="pricePerSlot">Price per Slot *</label>
+        <input
+          type="number"
+          id="pricePerSlot"
+          name="pricePerSlot"
+          required
+          min="0"
+          step="0.01"
+          [(ngModel)]="courtForm.pricePerSlot"
+        />
+      </div>
+      <div class="field checkbox-field">
+        <label>
+          <input type="checkbox" name="active" [(ngModel)]="courtForm.active" />
+          Active
+        </label>
+      </div>
+    </form>
+
+    <div modalActions>
+      <button type="button" class="btn btn-secondary" (click)="closeCourtDialog()">Cancel</button>
+      <button
+        type="submit"
+        form="courtForm"
+        class="btn btn-primary"
+        [disabled]="!courtFormRef.form.valid || saving()"
+      >
+        {{ saving() ? 'Saving…' : (editingCourt() ? 'Update' : 'Create') }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (showHoursDialog()) {
+  <app-modal
+    [heading]="editingDay() !== null ? 'Edit Opening Hours' : 'Add Opening Hours'"
+    description="Bookings are only offered inside these hours."
+    [busy]="saving()"
+    (closed)="closeHoursDialog()"
+  >
+    <form id="hoursForm" (ngSubmit)="saveHours()" #hoursFormRef="ngForm">
+      <div class="field">
+        <label for="dayOfWeek">Day *</label>
+        <select id="dayOfWeek" name="dayOfWeek" required [(ngModel)]="hoursForm.dayOfWeek">
+          <!-- ngValue keeps the numeric type. Plain [value] stringifies, which
+               made the backend receive "2" instead of 2. -->
+          @for (day of dayOptions; track day.value) {
+            <option [ngValue]="day.value">{{ day.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="opens">Opens *</label>
+        <input type="time" id="opens" name="opens" required [(ngModel)]="hoursForm.opens" />
+      </div>
+      <div class="field">
+        <label for="closes">Closes *</label>
+        <input type="time" id="closes" name="closes" required [(ngModel)]="hoursForm.closes" />
+      </div>
+    </form>
+
+    <div modalActions>
+      <button type="button" class="btn btn-secondary" (click)="closeHoursDialog()">Cancel</button>
+      <button
+        type="submit"
+        form="hoursForm"
+        class="btn btn-primary"
+        [disabled]="!hoursFormRef.form.valid || saving()"
+      >
+        {{ saving() ? 'Saving…' : 'Save' }}
+      </button>
+    </div>
+  </app-modal>
+}

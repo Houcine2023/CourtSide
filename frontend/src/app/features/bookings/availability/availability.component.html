@@ -1,0 +1,127 @@
+@if (loading()) {
+  <div class="availability-loading">Loading availability…</div>
+} @else if (availability(); as avail) {
+  <section class="availability">
+    <header class="availability-header">
+      <div class="availability-info">
+        <h1>{{ courtName() }}</h1>
+        <p class="venue">{{ formatDate(date()) }}</p>
+        @if (!clubOpen()) {
+          <span class="closed-badge">Club closed today</span>
+        }
+      </div>
+      <div class="date-nav">
+        <button class="btn btn-secondary btn-sm" (click)="prevDay()" [disabled]="!clubOpen()">‹ Prev</button>
+        <button class="btn btn-secondary btn-sm" (click)="today()">Today</button>
+        <button class="btn btn-secondary btn-sm" (click)="nextDay()">Next ›</button>
+      </div>
+    </header>
+
+    @if (error()) {
+      <div class="alert alert-error" role="alert">{{ error() }}</div>
+    }
+
+    <div class="slots-grid">
+      @if (availableSlots().length > 0) {
+        <div class="slot-group">
+          <h3 class="slot-group-title">Available slots</h3>
+          <div class="slot-list">
+            @for (slot of availableSlots(); track slot.start) {
+              <button
+                class="slot-btn slot-available"
+                (click)="selectSlot(slot)"
+                [title]="'DT ' + slot.price.toFixed(2)"
+              >
+                <span class="slot-time">{{ formatTime(slot.start) }} – {{ formatTime(slot.end) }}</span>
+                <span class="slot-price">DT {{ slot.price.toFixed(2) }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @if (unavailableSlots().length > 0) {
+        <div class="slot-group">
+          <h3 class="slot-group-title">Booked</h3>
+          <div class="slot-list">
+            @for (slot of unavailableSlots(); track slot.start) {
+              <button class="slot-btn slot-unavailable" disabled>
+                <span class="slot-time">{{ formatTime(slot.start) }} – {{ formatTime(slot.end) }}</span>
+                <span class="slot-status">Booked</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @if (slots().length === 0) {
+        <p class="no-slots">No slots for this day.</p>
+      }
+    </div>
+  </section>
+} @else if (error()) {
+  <div class="availability-error" role="alert">
+    <p>{{ error() }}</p>
+    <a routerLink="/clubs" class="btn btn-secondary">Back to clubs</a>
+  </div>
+}
+
+<!-- Booking Dialog -->
+@if (showBookingDialog()) {
+  <app-modal
+    [heading]="'Confirm ' + (bookingMode() === 'hold' ? 'Hold' : 'Booking')"
+    [busy]="bookingLoading()"
+    (closed)="closeBookingDialog()"
+  >
+    @if (selectedSlot(); as slot) {
+      <dl class="booking-summary">
+        <div><dt>Court</dt><dd>{{ courtName() }}</dd></div>
+        <div><dt>Date</dt><dd>{{ formatDate(date()) }}</dd></div>
+        <div><dt>Time</dt><dd>{{ formatTime(slot.start) }} – {{ formatTime(slot.end) }}</dd></div>
+        <div><dt>Price</dt><dd>DT {{ slot.price.toFixed(2) }}</dd></div>
+      </dl>
+
+      <fieldset class="booking-mode">
+        <legend>Booking type</legend>
+        <label>
+          <input
+            type="radio"
+            name="mode"
+            value="book"
+            [checked]="bookingMode() === 'book'"
+            (change)="bookingMode.set('book')"
+          />
+          <span>
+            <strong>Book now</strong>
+            <small>Confirmed immediately</small>
+          </span>
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="mode"
+            value="hold"
+            [checked]="bookingMode() === 'hold'"
+            (change)="bookingMode.set('hold')"
+          />
+          <span>
+            <strong>Hold for 10 min</strong>
+            <small>Confirm later from your bookings</small>
+          </span>
+        </label>
+      </fieldset>
+    }
+
+    <div modalActions>
+      <button type="button" class="btn btn-secondary" (click)="closeBookingDialog()">Cancel</button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="confirmBooking()"
+        [disabled]="bookingLoading()"
+      >
+        {{ bookingLoading() ? 'Processing…' : 'Confirm ' + (bookingMode() === 'hold' ? 'Hold' : 'Booking') }}
+      </button>
+    </div>
+  </app-modal>
+}

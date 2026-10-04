@@ -1,0 +1,125 @@
+@if (loading()) {
+  <div class="waitlist-loading">Loading your waitlist…</div>
+} @else {
+  <section class="waitlist">
+    <header class="waitlist-header">
+      <h1>My Waitlist</h1>
+      <button class="btn btn-primary" (click)="openJoinDialog()">+ Join Waitlist</button>
+    </header>
+
+    @if (error()) {
+      <div class="alert alert-error" role="alert">{{ error() }}</div>
+    }
+
+    @if (activeWaitlist().length > 0) {
+      <section class="waitlist-section">
+        <h2>Waiting</h2>
+        <div class="waitlist-list">
+          @for (entry of activeWaitlist(); track entry.id) {
+            <article class="waitlist-card waiting">
+              <div class="waitlist-info">
+                <h3>{{ entry.courtName }}</h3>
+                <p class="waitlist-venue">{{ entry.clubName }}</p>
+                <p class="waitlist-time">{{ formatDateTime(entry.start) }} – {{ formatDateTime(entry.end).split(', ').pop() }}</p>
+                <p class="waitlist-joined">Joined {{ formatDateTime(entry.createdAt) }}</p>
+              </div>
+              <div class="waitlist-actions">
+                <span class="status-badge status-waiting">Waiting</span>
+                <button class="btn btn-ghost btn-sm" (click)="leaveWaitlist(entry.id)">Leave</button>
+              </div>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    @if (notifiedWaitlist().length > 0) {
+      <section class="waitlist-section">
+        <h2>Notified (Slot Freed)</h2>
+        <div class="waitlist-list">
+          @for (entry of notifiedWaitlist(); track entry.id) {
+            <article class="waitlist-card notified">
+              <div class="waitlist-info">
+                <h3>{{ entry.courtName }}</h3>
+                <p class="waitlist-venue">{{ entry.clubName }}</p>
+                <p class="waitlist-time">{{ formatDateTime(entry.start) }} – {{ formatDateTime(entry.end).split(', ').pop() }}</p>
+                <p class="waitlist-notified">Notified {{ formatDateTime(entry.notifiedAt!) }}</p>
+              </div>
+              <div class="waitlist-actions">
+                <span class="status-badge status-notified">Notified</span>
+                <a class="btn btn-primary btn-sm" [routerLink]="['/clubs', entry.courtId, 'availability', entry.start.split('T')[0]]">Book Now</a>
+              </div>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    @if (pastWaitlist().length > 0) {
+      <section class="waitlist-section">
+        <h2>Expired / Cancelled</h2>
+        <div class="waitlist-list">
+          @for (entry of pastWaitlist(); track entry.id) {
+            <article class="waitlist-card past">
+              <div class="waitlist-info">
+                <h3>{{ entry.courtName }}</h3>
+                <p class="waitlist-venue">{{ entry.clubName }}</p>
+                <p class="waitlist-time">{{ formatDateTime(entry.start) }} – {{ formatDateTime(entry.end).split(', ').pop() }}</p>
+              </div>
+              <div class="waitlist-actions">
+                <span class="status-badge status-past">Expired</span>
+              </div>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    @if (waitlist().length === 0) {
+      <div class="waitlist-empty">
+        <p class="muted">No waitlist entries yet.</p>
+        <button class="btn btn-primary" (click)="openJoinDialog()">Join Your First Waitlist</button>
+      </div>
+    }
+  </section>
+}
+
+<!-- Join Waitlist Dialog -->
+@if (showJoinDialog()) {
+  <app-modal heading="Join Waitlist" [busy]="loading()" (closed)="closeJoinDialog()">
+    <form id="waitlistForm" (ngSubmit)="joinWaitlist()" #waitlistFormRef="ngForm">
+      <div class="field">
+        <label for="waitlistCourtId">Court ID *</label>
+        <input
+          type="number"
+          id="waitlistCourtId"
+          name="courtId"
+          required
+          min="1"
+          [(ngModel)]="waitlistData.courtId"
+          placeholder="Enter court ID"
+        />
+      </div>
+      <div class="field">
+        <label for="waitlistStart">Start Time *</label>
+        <input type="datetime-local" id="waitlistStart" name="start" required [(ngModel)]="waitlistData.start" />
+      </div>
+      <div class="field">
+        <label for="waitlistEnd">End Time *</label>
+        <input type="datetime-local" id="waitlistEnd" name="end" required [(ngModel)]="waitlistData.end" />
+      </div>
+    </form>
+
+    <div modalActions>
+      <button type="button" class="btn btn-secondary" (click)="closeJoinDialog()">Cancel</button>
+      <button
+        type="submit"
+        form="waitlistForm"
+        class="btn btn-primary"
+        [disabled]="!waitlistFormRef.form.valid || loading()"
+      >
+        {{ loading() ? 'Joining…' : 'Join Waitlist' }}
+      </button>
+    </div>
+  </app-modal>
+}

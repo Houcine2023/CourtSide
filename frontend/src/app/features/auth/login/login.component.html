@@ -1,0 +1,61 @@
+<section class="auth-page">
+  <div class="auth-card card">
+    <header class="auth-head">
+      <h1>Welcome back</h1>
+      <p class="muted">Sign in to book your next match.</p>
+    </header>
+
+    <!-- novalidate: our messages are richer and consistent across browsers. -->
+    <form (submit)="$event.preventDefault(); onSubmit()" novalidate>
+      <div class="field">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          autocomplete="email"
+          [value]="loginForm.email().value()"
+          (input)="loginForm.email().value.set($event.target.value)"
+          [attr.aria-invalid]="loginForm.email().invalid() && loginForm.email().touched()"
+          aria-describedby="email-error"
+        />
+        <!-- role="alert" makes a screen reader announce the message the moment it
+             appears, instead of leaving it silently on screen. -->
+        @if (loginForm.email().invalid() && loginForm.email().touched()) {
+          <p class="field-error" id="email-error" role="alert">
+            {{ loginForm.email().errors()[0]?.message }}
+          </p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          autocomplete="current-password"
+          [value]="loginForm.password().value()"
+          (input)="loginForm.password().value.set($event.target.value)"
+          [attr.aria-invalid]="loginForm.password().invalid() && loginForm.password().touched()"
+          aria-describedby="password-error"
+        />
+        @if (loginForm.password().invalid() && loginForm.password().touched()) {
+          <p class="field-error" id="password-error" role="alert">
+            {{ loginForm.password().errors()[0]?.message }}
+          </p>
+        }
+      </div>
+
+      @if (serverError()) {
+        <p class="alert alert-error" role="alert">{{ serverError() }}</p>
+      }
+
+      <button type="submit" class="btn btn-primary btn-block" [disabled]="loginForm().submitting()">
+        {{ loginForm().submitting() ? 'Signing in…' : 'Sign in' }}
+      </button>
+    </form>
+
+    <p class="auth-alt muted">
+      New here? <a routerLink="/register">Create an account</a>
+    </p>
+  </div>
+</section>

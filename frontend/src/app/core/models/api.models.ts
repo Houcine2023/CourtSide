@@ -30,9 +30,19 @@ export interface LoginRequest {
 }
 
 export interface Me {
+  id: number;
   email: string;
   fullName: string;
   role: Role;
+}
+
+export interface UpdateProfileRequest {
+  fullName: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }
 
 // ---------- clubs & courts ----------
@@ -46,6 +56,12 @@ export interface Club {
   managerName: string | null;
 }
 
+export interface ClubRequest {
+  name: string;
+  city: string;
+  address: string;
+}
+
 export interface Court {
   id: number;
   clubId: number;
@@ -56,9 +72,23 @@ export interface Court {
   active: boolean;
 }
 
+export interface CourtRequest {
+  name: string;
+  sport: Sport;
+  slotMinutes: number;
+  pricePerSlot: number;
+  active: boolean;
+}
+
 export interface OpeningHours {
   id: number;
   dayOfWeek: number; // 1 = Monday ... 7 = Sunday (ISO)
+  opens: string;     // 'HH:mm:ss'
+  closes: string;
+}
+
+export interface OpeningHoursRequest {
+  dayOfWeek: number;
   opens: string;     // 'HH:mm:ss'
   closes: string;
 }
@@ -85,6 +115,8 @@ export interface Slot {
 
 export interface Availability {
   courtId: number;
+  /** The owning club. Needed to subscribe to /topic/clubs/{clubId}/availability. */
+  clubId: number;
   courtName: string;
   date: string;
   clubOpen: boolean;
@@ -128,4 +160,65 @@ export interface ApiError {
   error: string;
   message: string;
   fieldErrors?: Record<string, string>;
+}
+
+// ---------- dashboard ----------
+
+export interface DashboardResponse {
+  clubId: number;
+  from: string;
+  to: string;
+  summary: DashboardSummary;
+  revenueByWeek: WeekPoint[];
+  byCourt: CourtPerformance[];
+  busiestHours: HourPoint[];
+}
+
+export interface DashboardSummary {
+  confirmedBookings: number;
+  cancelledBookings: number;
+  revenue: number;
+  cancellationRatePct: number;
+  capacitySlots: number;
+  occupancyRatePct: number;
+}
+
+export interface WeekPoint {
+  weekStart: string;
+  bookings: number;
+  revenue: number;
+  runningRevenue: number;
+}
+
+export interface CourtPerformance {
+  courtId: number;
+  courtName: string;
+  bookings: number;
+  revenue: number;
+  revenueSharePct: number;
+}
+
+export interface HourPoint {
+  hourOfDay: number;
+  bookings: number;
+}
+
+// ---------- waitlist ----------
+
+export interface WaitlistRequest {
+  courtId: number;
+  start: string;
+  end: string;
+}
+
+export interface WaitlistResponse {
+  id: number;
+  courtId: number;
+  courtName: string;
+  clubName: string;
+  start: string;
+  end: string;
+  active: boolean;
+  notifiedAt: string | null;
+  createdAt: string;
 }

@@ -1,0 +1,56 @@
+@if (loading()) {
+  <div class="court-list-loading">Loading courts…</div>
+} @else if (activeCourts().length > 0) {
+  <div class="court-grid">
+    @for (court of activeCourts(); track court.id) {
+      <article class="court-card">
+        <header class="court-card-header">
+          <span class="court-sport" aria-hidden="true">{{ getSportIcon(court.sport) }}</span>
+          <h3 class="court-name">{{ court.name }}</h3>
+          <span class="court-sport-label">{{ court.sport }}</span>
+        </header>
+        <dl class="court-details">
+          <div class="detail-row">
+            <dt>Slot length</dt>
+            <dd>{{ court.slotMinutes }} min</dd>
+          </div>
+          <div class="detail-row">
+            <dt>Price per slot</dt>
+            <dd>{{ formatPrice(court.pricePerSlot) }} DT</dd>
+          </div>
+        </dl>
+        <footer class="court-card-footer">
+          <a
+            class="btn btn-primary btn-block"
+            [routerLink]="availabilityLink(court.id)"
+          >
+            Check availability
+          </a>
+          @if (showManage()) {
+            <div class="court-manage">
+              <button class="btn btn-secondary btn-sm" (click)="manageCourt.emit(court)">Edit</button>
+              <button class="btn btn-danger btn-sm" (click)="deactivateCourt.emit(court.id)">Deactivate</button>
+            </div>
+          }
+        </footer>
+      </article>
+    }
+  </div>
+} @else {
+  <p class="muted">No active courts at this club.</p>
+}
+
+@if (inactiveCourts().length > 0) {
+  <details class="inactive-courts">
+    <summary>{{ inactiveCourts().length }} inactive court(s)</summary>
+    <ul>
+      @for (court of inactiveCourts(); track court.id) {
+        <li>{{ court.name }} ({{ court.sport }}) — deactivated</li>
+      }
+    </ul>
+  </details>
+}
+
+@if (error()) {
+  <p class="alert alert-error" role="alert">{{ error() }}</p>
+}

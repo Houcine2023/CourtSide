@@ -1,0 +1,225 @@
+.availability {
+  width: min(var(--page-width), 92%);
+  margin-inline: auto;
+  padding-block: 2rem;
+}
+
+.availability-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.availability-info h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.75rem;
+}
+
+.venue {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.closed-badge {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 999px;
+}
+
+.date-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.slots-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.slot-group-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-subtle);
+  margin: 0 0 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.slot-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.slot-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.875rem 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: left;
+}
+
+.slot-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.slot-available {
+  border-color: var(--accent);
+}
+
+.slot-available:hover {
+  background: var(--accent-soft);
+}
+
+.slot-unavailable {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.slot-time {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.slot-price {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.slot-status {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.no-slots {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+
+.availability-loading,
+.availability-error {
+  width: min(var(--page-width), 92%);
+  margin-inline: auto;
+  padding-block: 3rem;
+  text-align: center;
+}
+
+.availability-error {
+  color: var(--danger);
+}
+
+.availability-error .btn {
+  margin-top: 1rem;
+}
+
+/* Booking confirm dialog content. The dialog chrome itself is owned by the
+   shared ModalComponent. */
+.booking-summary {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.booking-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.booking-summary dt {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.booking-summary dd {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+.booking-mode {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.booking-mode legend {
+  padding-inline: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.booking-mode label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.booking-mode label:hover {
+  background: var(--surface-hover);
+}
+
+.booking-mode input[type='radio'] {
+  accent-color: var(--accent);
+  margin-top: 0.25rem;
+}
+
+.booking-mode label span {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.booking-mode label strong {
+  font-size: 0.92rem;
+}
+
+.booking-mode label small {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+@media (max-width: 480px) {
+  .availability-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .date-nav {
+    justify-content: center;
+  }
+
+  .slot-list {
+    grid-template-columns: 1fr;
+  }
+}

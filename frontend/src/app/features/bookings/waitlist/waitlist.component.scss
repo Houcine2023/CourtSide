@@ -1,0 +1,177 @@
+.waitlist {
+  width: min(var(--page-width), 92%);
+  margin-inline: auto;
+  padding-block: 2rem;
+}
+
+.waitlist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.waitlist-header h1 {
+  margin: 0;
+}
+
+.waitlist-loading {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+
+.waitlist-section {
+  margin-bottom: 2rem;
+}
+
+.waitlist-section h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.waitlist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.waitlist-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.waitlist-card.waiting {
+  border-left: 4px solid #f59e0b;
+}
+
+.waitlist-card.notified {
+  border-left: 4px solid #22c55e;
+}
+
+.waitlist-card.past {
+  border-left: 4px solid #9ca3af;
+  opacity: 0.7;
+}
+
+.waitlist-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.waitlist-info h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+.waitlist-venue {
+  margin: 0 0 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.waitlist-time {
+  margin: 0 0 0.25rem;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.waitlist-joined,
+.waitlist-notified {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+}
+
+.waitlist-notified {
+  color: #166534;
+  font-weight: 500;
+}
+
+.waitlist-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.status-waiting {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-notified {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-past {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.waitlist-empty {
+  text-align: center;
+  padding: 3rem;
+}
+
+.waitlist-empty .muted {
+  margin-bottom: 1rem;
+}
+
+.waitlist-empty .btn {
+  margin-top: 1rem;
+}
+
+
+.waitlist-empty {
+  text-align: center;
+  padding: 3rem;
+}
+
+.waitlist-empty .muted {
+  margin-bottom: 1rem;
+}
+
+.waitlist-empty .btn {
+  margin-top: 1rem;
+}
+
+@media (max-width: 480px) {
+  .waitlist-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .waitlist-actions {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .waitlist-actions .btn {
+    flex: 1;
+  }
+}
