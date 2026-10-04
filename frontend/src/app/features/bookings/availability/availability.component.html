@@ -20,6 +20,9 @@
     @if (error()) {
       <div class="alert alert-error" role="alert">{{ error() }}</div>
     }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
 
     <div class="slots-grid">
       @if (availableSlots().length > 0) {
@@ -47,7 +50,7 @@
             @for (slot of unavailableSlots(); track slot.start) {
               <button class="slot-btn slot-unavailable" disabled>
                 <span class="slot-time">{{ formatTime(slot.start) }} – {{ formatTime(slot.end) }}</span>
-                <span class="slot-status">Booked</span>
+                <span class="slot-status">{{ isSlotPast(slot) ? 'Past' : 'Booked' }}</span>
               </button>
             }
           </div>

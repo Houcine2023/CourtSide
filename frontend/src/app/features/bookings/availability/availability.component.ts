@@ -27,6 +27,7 @@ export class AvailabilityComponent implements OnDestroy {
 
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly success = signal<string | null>(null);
   protected readonly selectedSlot = signal<Slot | null>(null);
   protected readonly showBookingDialog = signal(false);
   protected readonly bookingMode = signal<'book' | 'hold'>('book');
@@ -63,13 +64,34 @@ export class AvailabilityComponent implements OnDestroy {
   protected readonly clubOpen = computed(() => this.availability()?.clubOpen ?? false);
   protected readonly slots = signal<Slot[]>([]);
 
+  /**
+   * A slot is only genuinely bookable if the backend considers it free AND it has
+   * not already started. The API reports availability from the club's opening
+   * hours alone, so on today's date the morning slots come back as "available"
+   * long after they have gone by. Rendering those as clickable invited the user
+   * into a dialog that could only end in a 422.
+   *
+   * The clock is captured once at construction rather than per render: a computed
+   * that reads new Date() would be impure, and re-evaluating it on every change
+   * detection pass is both wasteful and non-deterministic in tests.
+   */
+  private readonly now = new Date();
+
+  private isPast(slot: Slot): boolean {
+    return new Date(slot.start).getTime() <= this.now.getTime();
+  }
+
   protected readonly availableSlots = computed(() =>
-    this.slots().filter((s) => s.available),
+    this.slots().filter((s) => s.available && !this.isPast(s)),
   );
 
   protected readonly unavailableSlots = computed(() =>
-    this.slots().filter((s) => !s.available),
+    this.slots().filter((s) => !s.available || this.isPast(s)),
   );
+
+  protected isSlotPast(slot: Slot): boolean {
+    return this.isPast(slot);
+  }
 
   private unsubscribeWs: (() => void) | null = null;
 
@@ -141,6 +163,10 @@ export class AvailabilityComponent implements OnDestroy {
 
   protected selectSlot(slot: Slot): void {
     if (!slot.available) return;
+    // Clear the previous confirmation, otherwise a stale "Booking confirmed"
+    // banner sits above the grid while the user books a different slot.
+    this.success.set(null);
+    this.error.set(null);
     this.selectedSlot.set(slot);
     this.showBookingDialog.set(true);
   }
@@ -175,6 +201,14 @@ export class AvailabilityComponent implements OnDestroy {
       }
       this.closeBookingDialog();
       this.error.set(null);
+      // Booking used to succeed completely silently: the dialog vanished and the
+      // user was left guessing whether the slot was theirs. The .alert-success
+      // styles already existed in the global stylesheet but nothing rendered them.
+      this.success.set(
+        this.bookingMode() === 'hold'
+          ? 'Slot held. Complete payment before the hold expires.'
+          : 'Booking confirmed. You can find it under My Bookings.',
+      );
       this.router.navigate([], { relativeTo: this.route, replaceUrl: true });
     } catch (err: any) {
       if (err?.status === 409) {
