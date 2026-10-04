@@ -15,7 +15,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      // Uses the full Chromium binary in new headless mode instead of the separate
+      // chrome-headless-shell build. One binary rather than two, and it keeps the
+      // suite runnable where only the main Chromium download succeeds.
+      use: { ...devices['Desktop Chrome'], channel: 'chromium' },
     },
     {
       name: 'firefox',
