@@ -252,6 +252,19 @@
   color: var(--accent-ink);
 }
 
+/*
+ * A chip is 30px tall at the default padding, which is fine for the decorative
+ * badges on a club card but too small to hit reliably with a thumb. Only the
+ * interactive filter chips are enlarged, and only for coarse pointers, so the
+ * desktop density is unchanged.
+ */
+@media (pointer: coarse) {
+  .chip-filter {
+    min-height: 44px;
+    padding-inline: 1rem;
+  }
+}
+
 .finder-meta {
   display: flex;
   flex-wrap: wrap;
