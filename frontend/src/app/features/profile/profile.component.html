@@ -1,0 +1,109 @@
+@if (profile(); as me) {
+  <section class="profile">
+    <header class="profile-header">
+      <h1>My Account</h1>
+      <p class="subtitle">Manage your profile and security settings</p>
+    </header>
+
+    <section class="profile-section">
+      <h2>Profile Information</h2>
+      <form (ngSubmit)="updateProfile()" #profileForm="ngForm">
+        <div class="form-grid">
+          <div class="field">
+            <label for="fullName">Full Name *</label>
+            <input type="text" id="fullName" name="fullName" required [(ngModel)]="formData.fullName" />
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <!-- Readonly, not disabled: a disabled input is omitted from the
+                 form and is skipped by screen readers announcing the field. -->
+            <input type="email" id="email" name="email" readonly [value]="formData.email" />
+            <p class="field-hint">Contact an administrator to change your email.</p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="role">Role</label>
+          <input type="text" id="role" readonly [value]="formatRole(me.role)" />
+          <p class="field-hint">Role is assigned by administrators.</p>
+        </div>
+        <button type="submit" class="btn btn-primary" [disabled]="!profileForm.form.valid || loading()">
+          {{ loading() ? 'Saving…' : 'Save Changes' }}
+        </button>
+      </form>
+    </section>
+
+    <section class="profile-section">
+      <h2>Security</h2>
+      <p class="muted">Changing your password signs you out on every device.</p>
+      <button type="button" class="btn btn-secondary" (click)="openPasswordDialog()">
+        Change Password
+      </button>
+    </section>
+
+    <section class="profile-section danger-zone">
+      <h2>Danger Zone</h2>
+      <p class="muted">Irreversible actions.</p>
+      <button class="btn btn-danger" (click)="signOut()">Sign Out Everywhere</button>
+    </section>
+  </section>
+}
+
+@if (showPasswordDialog()) {
+  <app-modal
+    heading="Change Password"
+    description="You will be signed out on every device once this succeeds."
+    [busy]="changingPassword()"
+    (closed)="closePasswordDialog()"
+  >
+    <form id="passwordForm" (ngSubmit)="changePassword()" #passwordFormRef="ngForm">
+      <div class="field">
+        <label for="currentPassword">Current Password *</label>
+        <input
+          type="password"
+          id="currentPassword"
+          name="currentPassword"
+          required
+          [(ngModel)]="passwordFields.currentPassword"
+          autocomplete="current-password"
+        />
+      </div>
+      <div class="field">
+        <label for="newPassword">New Password *</label>
+        <input
+          type="password"
+          id="newPassword"
+          name="newPassword"
+          required
+          minlength="8"
+          [(ngModel)]="passwordFields.newPassword"
+          autocomplete="new-password"
+        />
+        <p class="field-hint">At least 8 characters.</p>
+      </div>
+      <div class="field">
+        <label for="confirmPassword">Confirm New Password *</label>
+        <input
+          type="password"
+          id="confirmPassword"
+          name="confirmPassword"
+          required
+          minlength="8"
+          [(ngModel)]="passwordFields.confirmPassword"
+          autocomplete="new-password"
+        />
+      </div>
+    </form>
+
+    <div modalActions>
+      <button type="button" class="btn btn-secondary" (click)="closePasswordDialog()">Cancel</button>
+      <button
+        type="submit"
+        form="passwordForm"
+        class="btn btn-primary"
+        [disabled]="!passwordFormRef.form.valid || changingPassword()"
+      >
+        {{ changingPassword() ? 'Updating…' : 'Change Password' }}
+      </button>
+    </div>
+  </app-modal>
+}
