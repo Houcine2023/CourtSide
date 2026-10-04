@@ -1,10 +1,11 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Service, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { AuthResponse, LoginRequest, Me, RegisterRequest, Role } from '../models/api.models';
+import { AuthResponse, ChangePasswordRequest, LoginRequest, Me, RegisterRequest, Role, UpdateProfileRequest } from '../models/api.models';
+import { TokenStorage } from './token-storage';
 
 const ACCESS_TOKEN_KEY = 'courtside.accessToken';
 const REFRESH_TOKEN_KEY = 'courtside.refreshToken';
@@ -12,40 +13,39 @@ const REFRESH_TOKEN_KEY = 'courtside.refreshToken';
 /**
  * Authentication state and the token pair.
  *
- * State lives in SIGNALS rather than BehaviorSubjects: a signal is synchronously
- * readable (`this.isLoggedIn()` in a guard, no subscription), and templates that read
- * it re-render automatically without an `async` pipe or manual change detection.
+ * State lives in SIGNALS: readable synchronously in a guard, and templates that read
+ * them re-render on their own — no subscriptions, no manual change detection.
+ * The writable signals stay private and are exposed read-only, so no component can
+ * corrupt session state by accident.
  *
- * Storage note: tokens go to localStorage, which is readable by any script on the
- * page — the accepted XSS trade-off of a token-based SPA. The mitigation is the short
- * 15-minute access-token lifetime plus refresh-token rotation on the server, so a
- * stolen pair is detectable and short-lived. httpOnly cookies would swap this for a
- * CSRF problem instead; neither is free.
+ * Storage: tokens sit in localStorage, readable by any script on the page. That is the
+ * accepted XSS trade-off of a token-based SPA; it is mitigated by a 15-minute access
+ * token and server-side refresh rotation, so a stolen pair is short-lived and its
+ * reuse is detected. httpOnly cookies would swap this for a CSRF problem instead.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly storage = inject(TokenStorage);
   private readonly api = environment.apiUrl;
 
-  /** Private writable state, exposed read-only — nobody outside can corrupt it. */
-  private readonly _accessToken = signal<string | null>(localStorage.getItem(ACCESS_TOKEN_KEY));
-  private readonly _currentUser = signal<Me | null>(null);
+  private readonly accessTokenSignal = signal<string | null>(this.storage.read(ACCESS_TOKEN_KEY));
+  private readonly currentUserSignal = signal<Me | null>(null);
 
-  readonly currentUser = this._currentUser.asReadonly();
-  readonly isLoggedIn = computed(() => this._accessToken() !== null);
-  readonly role = computed<Role | null>(() => this._currentUser()?.role ?? null);
-  readonly isStaff = computed(() => {
-    const role = this.role();
-    return role === 'MANAGER' || role === 'ADMIN';
-  });
+  readonly currentUser = this.currentUserSignal.asReadonly();
+  readonly isLoggedIn = computed(() => this.accessTokenSignal() !== null);
+  readonly role = computed<Role | null>(() => this.currentUserSignal()?.role ?? null);
+  readonly isStaff = computed(() => this.role() === 'MANAGER' || this.role() === 'ADMIN');
+  /** First name only — friendlier in the navbar than the full name. */
+  readonly displayName = computed(() => this.currentUserSignal()?.fullName.split(' ')[0] ?? '');
 
   get accessToken(): string | null {
-    return this._accessToken();
+    return this.accessTokenSignal();
   }
 
   get refreshToken(): string | null {
-    return localStorage.getItem(REFRESH_TOKEN_KEY);
+    return this.storage.read(REFRESH_TOKEN_KEY);
   }
 
   register(request: RegisterRequest): Observable<AuthResponse> {
@@ -67,37 +67,53 @@ export class AuthService {
       .pipe(tap((tokens) => this.storeTokens(tokens)));
   }
 
-  /** Loads the profile behind the current token (role, name) after a login or reload. */
+  /** Loads the profile behind the current token; the navbar and guards need the role. */
   loadCurrentUser(): Observable<Me> {
+    return this.http.get<Me>(`${this.api}/me`).pipe(tap((me) => this.currentUserSignal.set(me)));
+  }
+
+  /** Persists a profile edit and refreshes the cached user so the navbar updates. */
+  updateProfile(request: UpdateProfileRequest): Observable<Me> {
     return this.http
-      .get<Me>(`${this.api}/me`)
-      .pipe(tap((me) => this._currentUser.set(me)));
+      .put<Me>(`${this.api}/me`, request)
+      .pipe(tap((me) => this.currentUserSignal.set(me)));
+  }
+
+  /**
+   * The server revokes every refresh token on a password change, so the tokens
+   * held here are dead. Clear the session first and let the caller navigate —
+   * otherwise the next API call fails with a confusing 401.
+   */
+  changePassword(request: ChangePasswordRequest): Observable<unknown> {
+    return this.http.post(`${this.api}/me/password`, request).pipe(
+      tap(() => this.clearSession()),
+    );
   }
 
   logout(): void {
     const token = this.refreshToken;
-    // Tell the server to revoke the refresh token, but clear locally no matter what:
-    // a failed network call must never leave the user stuck "logged in".
     if (token) {
+      // Ask the server to revoke it, but clear locally whatever happens: a failed
+      // network call must never leave someone stuck in a "logged in" shell.
       this.http.post(`${this.api}/auth/logout`, { refreshToken: token }).subscribe({
-        error: () => void 0,
+        error: () => undefined,
       });
     }
     this.clearSession();
-    this.router.navigate(['/login']);
+    void this.router.navigate(['/login']);
   }
 
-  /** Wipes local state without calling the server (used when refreshing fails). */
+  /** Wipes local state without calling the server (used when a refresh fails). */
   clearSession(): void {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    this._accessToken.set(null);
-    this._currentUser.set(null);
+    this.storage.remove(ACCESS_TOKEN_KEY);
+    this.storage.remove(REFRESH_TOKEN_KEY);
+    this.accessTokenSignal.set(null);
+    this.currentUserSignal.set(null);
   }
 
   private storeTokens(tokens: AuthResponse): void {
-    localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
-    this._accessToken.set(tokens.accessToken);
+    this.storage.write(ACCESS_TOKEN_KEY, tokens.accessToken);
+    this.storage.write(REFRESH_TOKEN_KEY, tokens.refreshToken);
+    this.accessTokenSignal.set(tokens.accessToken);
   }
 }

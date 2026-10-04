@@ -10,6 +10,7 @@ import { BehaviorSubject, Observable, catchError, filter, switchMap, take, throw
 
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../services/auth.service';
+import { ToastService } from '../services/toast.service';
 
 /**
  * Shared refresh state.
@@ -31,6 +32,7 @@ const refreshedToken$ = new BehaviorSubject<string | null>(null);
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
+  const toast = inject(ToastService);
 
   // Auth endpoints must not carry (or refresh) a token: sending an expired access
   // token to /auth/refresh would trigger an infinite refresh loop.
@@ -45,6 +47,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       const is401 = error instanceof HttpErrorResponse && error.status === 401;
 
       if (!is401 || isAuthEndpoint || !isOurApi || !auth.refreshToken) {
+        // Show error toast for non-401 errors
+        if (error instanceof HttpErrorResponse && error.status !== 401) {
+          const message = error.error?.message || 'An unexpected error occurred';
+          toast.error(message);
+        }
         return throwError(() => error);
       }
       return handleExpiredToken(req, next, auth);
