@@ -14,6 +14,7 @@ import java.util.List;
  */
 public record AvailabilityResponse(
     Long courtId,
+    Long clubId,
     String courtName,
     LocalDate date,
     boolean clubOpen,

@@ -8,6 +8,7 @@ import static com.courtside.api.TestFixtures.member;
 import static com.courtside.api.TestFixtures.openingHours;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
@@ -106,6 +107,33 @@ class AvailabilityServiceTest {
         assertThat(response.slots().get(0).start()).isEqualTo(at(8, 0));
         assertThat(response.slots().get(0).end()).isEqualTo(at(9, 30));
         assertThat(response.slots().get(8).end()).isEqualTo(at(21, 30));
+    }
+
+    @Test
+    @DisplayName("carries the clubId so clients can subscribe to that club's live topic")
+    void getForDay_includesClubId() {
+        // The STOMP destination is /topic/clubs/{clubId}/availability, and the
+        // availability endpoint is keyed by courtId. Without clubId in the payload a
+        // client has no way to know which topic to listen to.
+        when(courtService.getById(5L)).thenReturn(court);
+        openFrom8To22();
+        noBookings();
+
+        assertThat(availabilityService.getForDay(5L, monday).clubId()).isEqualTo(court.getClub().getId());
+    }
+
+    @Test
+    @DisplayName("a closed day still reports its clubId, with an empty grid")
+    void getForDay_whenClosed_stillIncludesClubId() {
+        when(courtService.getById(5L)).thenReturn(court);
+        when(openingHoursRepository.findByClubIdAndDayOfWeek(anyLong(), anyInt()))
+                .thenReturn(Optional.empty());
+
+        AvailabilityResponse response = availabilityService.getForDay(5L, monday);
+
+        assertThat(response.clubOpen()).isFalse();
+        assertThat(response.slots()).isEmpty();
+        assertThat(response.clubId()).isEqualTo(court.getClub().getId());
     }
 
     @Test

@@ -74,7 +74,7 @@ public class AvailabilityService {
 
         // Closed that day (or the club never configured it): an empty grid, not an error.
         if (hours == null || !court.isActive()) {
-            return new AvailabilityResponse(court.getId(), court.getName(), date, false, List.of());
+            return new AvailabilityResponse(court.getId(), court.getClub().getId(), court.getName(), date, false, List.of());
         }
 
         OffsetDateTime dayStart = LocalDateTime.of(date, hours.getOpens()).atZone(zone).toOffsetDateTime();
@@ -102,6 +102,6 @@ public class AvailabilityService {
             cursor = slotEnd;
         }
 
-        return new AvailabilityResponse(court.getId(), court.getName(), date, true, slots);
+        return new AvailabilityResponse(court.getId(), court.getClub().getId(), court.getName(), date, true, slots);
     }
 }
