@@ -8,6 +8,12 @@ frontend/node_modules/
 frontend/dist/
 frontend/.angular/
 
+# Playwright — generated reports, traces and screenshots
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+frontend/.playwright/
+
 # IDE
 .idea/
 .vscode/
