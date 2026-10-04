@@ -4,6 +4,7 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { provideClientHydration } from '@angular/platform-browser';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -14,5 +15,6 @@ export const appConfig: ApplicationConfig = {
     // Functional interceptors, registered once. Every request in the app now carries
     // the access token and transparently survives its expiry.
     provideHttpClient(withInterceptors([authInterceptor])),
+    provideClientHydration(),
   ],
 };
