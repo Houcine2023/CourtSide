@@ -1,3 +1,17 @@
+.club-list-header {
+  margin-bottom: 1.5rem;
+}
+
+.club-list-title {
+  font-size: clamp(1.5rem, 1.2rem + 1.4vw, 2rem);
+  line-height: 1.2;
+  margin: 0 0 0.35rem;
+}
+
+.club-list-subtitle {
+  margin: 0;
+}
+
 .club-list-loading {
   display: flex;
   flex-direction: column;
