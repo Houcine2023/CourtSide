@@ -8,8 +8,12 @@ import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,6 +53,7 @@ class ExclusionConstraintIT extends AbstractIntegrationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private OpeningHoursRepository openingHoursRepository;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private Flyway flyway;
 
     private Court court;
     private User user;
@@ -193,14 +198,33 @@ class ExclusionConstraintIT extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("both Flyway migrations are applied")
+    @DisplayName("every shipped Flyway migration is applied, in order")
     void migrations_areApplied() {
-        List<String> versions = jdbc.queryForList(
-                "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank",
+        // Derived from Flyway's own scan of the classpath rather than a literal
+        // list. The old assertion was containsExactly("1", "2") and was written
+        // when only two migrations existed; V3 and V4 landed later and nobody
+        // updated it, so the pipeline went red and stayed red. A hard-coded list
+        // costs maintenance the moment the project ships its next migration, and
+        // the day it is forgotten the assertion reports an innocent change as a
+        // failure. This version needs no edit when V5 is added — it just checks
+        // that what we ship is what actually ran.
+        List<String> shipped = Arrays.stream(flyway.info().all())
+                // Versioned migrations only: a repeatable (R__) migration carries
+                // no version, so it has nothing to line up against here.
+                .filter(MigrationInfo::isVersioned)
+                .map(MigrationInfo::getVersion)
+                .filter(Objects::nonNull)
+                .map(Object::toString)
+                .toList();
+
+        List<String> applied = jdbc.queryForList(
+                "SELECT version FROM flyway_schema_history"
+                        + " WHERE success AND version IS NOT NULL ORDER BY installed_rank",
                 String.class);
 
-        // Proves V1 and V2 run cleanly on an empty database — a broken migration
-        // fails here instead of in production.
-        assertThat(versions).containsExactly("1", "2");
+        // Proves every migration we ship runs cleanly on an empty database — a
+        // broken migration fails here instead of in production.
+        assertThat(shipped).isNotEmpty();
+        assertThat(applied).containsExactlyElementsOf(shipped);
     }
 }
