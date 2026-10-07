@@ -38,6 +38,19 @@ async function open(page: import('@playwright/test').Page, path: string) {
   return page;
 }
 
+/**
+ * How many clubs the API actually serves.
+ *
+ * Read from the API instead of hardcoded. These assertions used to expect 6 cards
+ * and only passed because an earlier run had left an extra club behind in a dirty
+ * local database; a freshly seeded one has five, so CI failed where dev did not.
+ */
+async function clubCount(request: import('@playwright/test').APIRequestContext) {
+  const res = await request.get('/api/v1/clubs?page=0&size=1');
+  const body = (await res.json()) as { totalElements: number };
+  return body.totalElements;
+}
+
 async function register(page: import('@playwright/test').Page, fullName = 'Test User') {
   const email = uniqueEmail();
   await open(page, '/register');
@@ -60,10 +73,10 @@ test.describe('Landing page', () => {
     await expect(page.getByRole('heading', { name: /how it works/i })).toBeVisible();
   });
 
-  test('renders real club cards from the API', async ({ page }) => {
+  test('renders real club cards from the API', async ({ page, request }) => {
     await expect(page.locator('.club-card').first()).toBeVisible({ timeout: 15000 });
-    // The seeded data has six clubs; the page must not show an empty state.
-    await expect(page.locator('.club-card')).toHaveCount(6);
+    // One card per club the API serves, rather than an empty or truncated grid.
+    await expect(page.locator('.club-card')).toHaveCount(await clubCount(request));
   });
 
   test('derives the headline stats from data', async ({ page }) => {
@@ -186,8 +199,8 @@ test.describe('Authentication', () => {
 test.describe('Club directory', () => {
   test.beforeEach(async ({ page }) => open(page, '/clubs'));
 
-  test('lists every club', async ({ page }) => {
-    await expect(page.locator('.club-card')).toHaveCount(6, { timeout: 15000 });
+    test('lists every club', async ({ page, request }) => {
+    await expect(page.locator('.club-card')).toHaveCount(await clubCount(request), { timeout: 15000 });
   });
 
   test('exposes a page heading and a sane heading order', async ({ page }) => {
