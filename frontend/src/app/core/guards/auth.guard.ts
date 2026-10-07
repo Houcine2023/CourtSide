@@ -1,5 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { catchError, map, of } from 'rxjs';
 
 import { AuthService } from '../services/auth.service';
 
@@ -32,7 +33,23 @@ export const staffGuard: CanActivateFn = (_route, state) => {
   if (!auth.isLoggedIn()) {
     return router.createUrlTree(['/login'], { queryParams: { redirect: state.url } });
   }
-  // Logged in but not staff: send them home rather than to a login page they have
-  // already passed — a login form would be a confusing answer to "not allowed".
-  return auth.isStaff() ? true : router.createUrlTree(['/clubs']);
+
+  const decide = () => (auth.isStaff() ? true : router.createUrlTree(['/clubs']));
+
+  // The token survives a reload; the in-memory profile does not, and this guard
+  // runs before the root component has finished fetching it. Reading a profile
+  // that is still null therefore said "not staff" and bounced managers off their
+  // own page on every hard refresh — so on a cold session, wait for the answer
+  // rather than guess it. Logged-in but not staff is sent home rather than to a
+  // login page they have already passed.
+  if (auth.role() !== null) {
+    return decide();
+  }
+
+  return auth.loadCurrentUser().pipe(
+    map(decide),
+    // The session turned out to be unusable. Send them to login with the URL
+    // they wanted so signing in again returns them to it.
+    catchError(() => of(router.createUrlTree(['/login'], { queryParams: { redirect: state.url } }))),
+  );
 };
