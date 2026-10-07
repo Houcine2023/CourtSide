@@ -1,4 +1,5 @@
-import { inject, Service, signal, computed, effect } from '@angular/core';
+import { inject, Service, signal, computed, effect, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
 import { AvailabilityEvent } from '../models/api.models';
@@ -12,6 +13,7 @@ interface StompFrame {
 @Service()
 export class WebSocketService {
   private readonly auth = inject(AuthService);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   protected readonly connected = signal(false);
   protected readonly connectionError = signal<string | null>(null);
@@ -20,10 +22,25 @@ export class WebSocketService {
   private subscriptions = new Map<string, any>();
 
   connect(): void {
+    // The availability route is server-rendered. Node has a WebSocket global but no
+    // page to resolve a relative broker URL against, so the constructor rejects with
+    // "Invalid URL" and the rejection escapes as an unhandled promise rejection in the
+    // prerender. Nothing to connect to until this runs in a browser.
+    if (!this.isBrowser) return;
     if (this.stompClient?.connected) return;
 
-    // Dynamic import of stompjs to avoid SSR issues
-    import('@stomp/stompjs').then(({ Client }) => {
+    import('@stomp/stompjs').then((mod: any) => {
+      // Node resolves stompjs to named exports; the browser gets the UMD bundle,
+      // which the dev server exposes as a default object instead. Destructuring
+      // the namespace directly therefore produced an undefined Client and the
+      // realtime availability feed silently never connected.
+      const Client = mod.Client ?? mod.default?.Client;
+      if (!Client) {
+        console.error('stompjs export shape:', Object.keys(mod), mod.default && Object.keys(mod.default));
+        this.connectionError.set('Failed to load WebSocket library');
+        return;
+      }
+
       const wsUrl = environment.wsUrl;
 
       // Plain brokerURL, so stompjs builds a native WebSocket to /ws. That has to
@@ -70,6 +87,10 @@ export class WebSocketService {
   }
 
   subscribeToClubAvailability(clubId: number, onEvent: (event: AvailabilityEvent) => void): () => void {
+    // connect() is a no-op on the server, so the retry loop below would never
+    // succeed and would keep the prerender alive on a 500ms timer.
+    if (!this.isBrowser) return () => {};
+
     if (!this.stompClient) {
       this.connect();
     }
