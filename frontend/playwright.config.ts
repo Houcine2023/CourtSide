@@ -6,7 +6,13 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  // A html-only reporter writes nothing to stdout, which makes a CI failure a
+  // red X with no explanation. Keep the console list, and still produce the html
+  // report (with `open: never` so it does not try to launch a browser on a box
+  // that has no display).
+  reporter: process.env.CI
+    ? [['list'], ['html', { open: 'never' }]]
+    : [['html'], ['list']],
   use: {
     baseURL: 'http://localhost:4200',
     trace: 'on-first-retry',
