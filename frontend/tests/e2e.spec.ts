@@ -62,6 +62,21 @@ async function register(page: import('@playwright/test').Page, fullName = 'Test 
   return { email, password: PASSWORD, fullName };
 }
 
+/**
+ * Signs in as one of the seeded demo accounts.
+ *
+ * Registration only ever mints members, so anything behind a manager or admin
+ * role — including the club photo controls — can only be reached with a seeded
+ * credential and PASSWORD.
+ */
+async function signIn(page: import('@playwright/test').Page, email: string) {
+  await open(page, '/login');
+  await page.fill('#email', email);
+  await page.fill('#password', PASSWORD);
+  await page.click('button[type="submit"]');
+  await page.waitForURL((url) => !url.pathname.startsWith('/login'));
+}
+
 // ---------------------------------------------------------------- landing page
 
 test.describe('Landing page', () => {
@@ -203,6 +218,26 @@ test.describe('Club directory', () => {
     await expect(page.locator('.club-card')).toHaveCount(await clubCount(request), { timeout: 15000 });
   });
 
+  test('shows a loaded photo on every club card', async ({ page, request }) => {
+    const count = await clubCount(request);
+    await expect(page.locator('.club-card')).toHaveCount(count, { timeout: 15000 });
+
+    // The API answers every card with a photo address, so each one must come back
+    // as a real image rather than the placeholder tile. naturalWidth is what
+    // distinguishes "the bytes arrived and decoded" from "the request errored".
+    const images = page.locator('.club-card app-club-photo img');
+    await expect
+      .poll(
+        () =>
+          images.evaluateAll(
+            (els) => els.filter((el) => (el as HTMLImageElement).naturalWidth > 0).length,
+          ),
+        { timeout: 15000 },
+      )
+      .toBe(count);
+    await expect(page.locator('.club-photo-fallback')).toHaveCount(0);
+  });
+
   test('exposes a page heading and a sane heading order', async ({ page }) => {
     // The directory used to start straight at the club cards with no h1 at all,
     // so the page had no accessible name and the cards skipped a level to h3.
@@ -228,6 +263,46 @@ test.describe('Club directory', () => {
     await open(page, '/clubs/1');
     await expect(page.getByRole('heading', { name: 'Courts' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Check availability' }).first()).toBeVisible();
+  });
+});
+
+// --------------------------------------------------------------- club photos
+
+test.describe('Club photo upload', () => {
+  const PNG_1PX = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  );
+
+  test('lets a manager replace the photo on their own club', async ({ page }) => {
+    await signIn(page, 'manager1@courtside.tn');
+    await open(page, '/my-clubs');
+
+    const card = page.locator('.club-card').first();
+    await expect(card.locator('app-club-photo')).toBeVisible({ timeout: 15000 });
+
+    await card.locator('.club-photo-input').setInputFiles({
+      name: 'uploaded.png',
+      mimeType: 'image/png',
+      buffer: PNG_1PX,
+    });
+
+    await expect(page.getByText(/club photo updated/i)).toBeVisible({ timeout: 15000 });
+
+    // photoUrl never changes, so the card only re-requests it once the cache
+    // buster appears — that is what proves the new bytes actually got fetched.
+    await expect
+      .poll(() => card.locator('app-club-photo img').getAttribute('src'), { timeout: 15000 })
+      .toContain('?v=');
+    await expect(card.locator('.club-photo-fallback')).toHaveCount(0);
+  });
+
+  test('keeps the photo controls off the public cards', async ({ page }) => {
+    await open(page, '/');
+    await expect(page.locator('.club-card').first()).toBeVisible({ timeout: 15000 });
+    // Anyone may look at a photo; only a manager of that club may change one,
+    // so the public cards carry the image and nothing else.
+    await expect(page.locator('.club-photo-input')).toHaveCount(0);
   });
 });
 

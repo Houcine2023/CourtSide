@@ -6,6 +6,7 @@ import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { Club, Court } from '../../core/models/api.models';
 import { ClubService } from '../../core/services/club.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ClubPhotoComponent } from '../../shared/club-photo/club-photo.component';
 
 /** A club plus everything the landing cards need to render without further requests. */
 interface ClubWithCourts extends Club {
@@ -22,7 +23,7 @@ interface ClubWithCourts extends Club {
  */
 @Component({
   selector: 'app-home',
-  imports: [RouterLink],
+  imports: [RouterLink, ClubPhotoComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })

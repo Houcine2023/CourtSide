@@ -7,6 +7,7 @@ import { toObservable } from '@angular/core/rxjs-interop';
 
 import { Club } from '../../../core/models/api.models';
 import { ClubService } from '../../../core/services/club.service';
+import { ClubPhotoComponent } from '../../../shared/club-photo/club-photo.component';
 
 /**
  * Club discovery: a debounced search over the public /clubs endpoint.
@@ -18,7 +19,7 @@ import { ClubService } from '../../../core/services/club.service';
  */
 @Component({
   selector: 'app-club-list',
-  imports: [RouterLink],
+  imports: [RouterLink, ClubPhotoComponent],
   templateUrl: './club-list.component.html',
   styleUrl: './club-list.component.scss',
 })

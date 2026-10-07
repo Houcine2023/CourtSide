@@ -12,6 +12,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -117,5 +118,26 @@ public class GlobalExceptionHandler {
                         "Validation failed",
                         errors
                 ));
+    }
+
+    /** An upload we refuse to store (missing, empty, or not an image type). -> 400. */
+    @ExceptionHandler(InvalidPhotoException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPhoto(InvalidPhotoException ex) {
+        return ResponseEntity
+                .badRequest()
+                .body(new ErrorResponse(400, "Bad Request", ex.getMessage()));
+    }
+
+    /**
+     * Raised by the multipart resolver while parsing, i.e. BEFORE any controller
+     * code runs — so without this it would surface as a bare 500. 413 tells the
+     * client to send a smaller file rather than "something went wrong".
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleTooLarge(MaxUploadSizeExceededException ex) {
+        return ResponseEntity
+                .status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(new ErrorResponse(413, "Payload Too Large",
+                        "Photo exceeds the maximum upload size"));
     }
 }

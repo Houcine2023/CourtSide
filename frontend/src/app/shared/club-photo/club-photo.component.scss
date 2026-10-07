@@ -1,0 +1,30 @@
+:host {
+  display: block;
+  position: relative;
+  /* Matches the seeded artwork's viewBox, so the SVGs the API ships fill the
+     frame without letterboxing and any raster upload crops to the same shape. */
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.club-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.club-photo-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: var(--gradient-dim), var(--surface);
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: clamp(1.6rem, 7vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}

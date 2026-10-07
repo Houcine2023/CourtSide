@@ -7,11 +7,12 @@ import { Club, ClubRequest } from '../../../core/models/api.models';
 import { ClubService } from '../../../core/services/club.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { ClubPhotoComponent } from '../../../shared/club-photo/club-photo.component';
 import { ModalComponent } from '../../../shared/modal/modal.component';
 
 @Component({
   selector: 'app-my-clubs',
-  imports: [RouterLink, FormsModule, ModalComponent],
+  imports: [RouterLink, FormsModule, ClubPhotoComponent, ModalComponent],
   templateUrl: './my-clubs.component.html',
   styleUrl: './my-clubs.component.scss',
 })
@@ -23,6 +24,8 @@ export class MyClubsComponent {
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly saving = signal(false);
+  /** Which club's photo upload is in flight, so only that card's control disables. */
+  protected readonly photoBusyId = signal<number | null>(null);
   protected readonly showCreateDialog = signal(false);
   protected readonly showEditDialog = signal(false);
   protected readonly editingClub = signal<Club | null>(null);
@@ -145,6 +148,55 @@ export class MyClubsComponent {
       await this.loadClubs();
     } catch (err: any) {
       this.toast.error(err?.error?.message || 'Failed to delete club.');
+    }
+  }
+
+  /**
+   * Cache-buster per club, bumped after every upload and removal.
+   *
+   * photoUrl never changes — the API answers with the same address whether a
+   * photo exists or not — so a card that already failed to load one would keep
+   * the broken <img> forever, since the binding value it reads is unchanged.
+   * A new query parameter is the simplest thing that makes the browser ask again.
+   */
+  private readonly photoVersions = signal<Record<number, number>>({});
+
+  protected photoUrl(club: Club): string {
+    const version = this.photoVersions()[club.id];
+    return version ? `${club.photoUrl}?v=${version}` : club.photoUrl;
+  }
+
+  protected async onPhotoSelected(club: Club, event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    // Cleared first so picking the same file after a rejected attempt fires change again.
+    input.value = '';
+    if (!file) return;
+
+    this.photoBusyId.set(club.id);
+    try {
+      await firstValueFrom(this.clubService.uploadPhoto(club.id, file));
+      this.photoVersions.update((versions) => ({ ...versions, [club.id]: Date.now() }));
+      this.toast.success('Club photo updated.');
+    } catch (err: any) {
+      this.toast.error(err?.error?.message || 'Failed to upload photo.');
+    } finally {
+      this.photoBusyId.set(null);
+    }
+  }
+
+  protected async removePhoto(clubId: number): Promise<void> {
+    if (this.photoBusyId() !== null) return;
+
+    this.photoBusyId.set(clubId);
+    try {
+      await firstValueFrom(this.clubService.deletePhoto(clubId));
+      this.photoVersions.update((versions) => ({ ...versions, [clubId]: Date.now() }));
+      this.toast.success('Club photo removed.');
+    } catch (err: any) {
+      this.toast.error(err?.error?.message || 'Failed to remove photo.');
+    } finally {
+      this.photoBusyId.set(null);
     }
   }
 }

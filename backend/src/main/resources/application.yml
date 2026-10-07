@@ -26,6 +26,15 @@ spring:
   flyway:
     enabled: true # scans classpath:db/migration for V*__*.sql at startup
 
+  servlet:
+    multipart:
+      # Ceiling for a club photo. Enforced by the multipart resolver while the
+      # request is still being parsed, so an oversized upload never reaches a
+      # controller — it surfaces as 413 via GlobalExceptionHandler instead of
+      # filling memory first. ClubService checks the same number again.
+      max-file-size: 5MB
+      max-request-size: 6MB
+
   data:
     redis:
       host: localhost

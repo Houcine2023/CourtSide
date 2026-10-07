@@ -54,6 +54,13 @@ export interface Club {
   address: string;
   managerId: number | null;
   managerName: string | null;
+  /**
+   * Always the canonical photo address, even when the club has no photo yet: the
+   * API does not spend a query per row telling us, and the browser already knows
+   * how to report a missing image. Cards render it and swap to their placeholder
+   * tile on (error).
+   */
+  photoUrl: string;
 }
 
 export interface ClubRequest {

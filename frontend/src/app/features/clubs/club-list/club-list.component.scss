@@ -112,6 +112,11 @@
   padding: 3rem;
 }
 
+app-club-photo {
+  display: block;
+  margin-bottom: 0.6rem;
+}
+
 @media (max-width: 480px) {
   .club-grid {
     grid-template-columns: 1fr;

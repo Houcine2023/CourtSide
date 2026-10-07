@@ -25,6 +25,7 @@ const club = (over: Partial<Club> = {}): Club => ({
   address: '1 Test Street',
   managerId: null,
   managerName: null,
+  photoUrl: '/api/v1/clubs/1/photo',
   ...over,
 });
 

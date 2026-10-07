@@ -72,6 +72,25 @@ export class ClubService {
     return this.http.delete<void>(`${this.api}/clubs/${id}`);
   }
 
+  /**
+   * Replace a club's photo (ADMIN / owning MANAGER).
+   *
+   * FormData rather than a JSON body: the file has to travel as multipart. The
+   * browser sets the Content-Type itself (including the boundary), so nothing
+   * sets it here — overriding it is the classic way to break an upload. The auth
+   * interceptor still attaches the token, because the URL is under environment.apiUrl.
+   */
+  uploadPhoto(clubId: number, file: File): Observable<void> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.put<void>(`${this.api}/clubs/${clubId}/photo`, form);
+  }
+
+  /** Remove a club's photo. The server treats it as idempotent. */
+  deletePhoto(clubId: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/clubs/${clubId}/photo`);
+  }
+
   /** Court CRUD */
   createCourt(clubId: number, request: CourtRequest): Observable<Court> {
     return this.http.post<Court>(`${this.api}/clubs/${clubId}/courts`, request);

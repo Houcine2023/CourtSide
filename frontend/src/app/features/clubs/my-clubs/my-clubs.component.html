@@ -20,6 +20,7 @@
       <div class="club-grid">
         @for (club of clubs(); track club.id) {
           <article class="club-card">
+            <app-club-photo [src]="photoUrl(club)" [alt]="club.name" />
             <a class="club-card-link" [routerLink]="['/clubs', club.id]">
               <header class="club-card-header">
                 <h3 class="club-name">{{ club.name }}</h3>
@@ -27,6 +28,28 @@
               </header>
               <p class="club-address">{{ club.address }}</p>
             </a>
+            @if (canManage()) {
+              <!-- Outside the card's link on purpose: a file picker nested in an
+                   anchor is not a thing anyone should have to reason about. -->
+              <div class="club-photo-actions">
+                <input
+                  class="club-photo-input"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                  [attr.aria-label]="'Upload a photo for ' + club.name"
+                  [disabled]="photoBusyId() !== null"
+                  (change)="onPhotoSelected(club, $event)"
+                />
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-sm"
+                  [disabled]="photoBusyId() !== null"
+                  (click)="removePhoto(club.id)"
+                >
+                  Remove
+                </button>
+              </div>
+            }
             <footer class="club-card-footer">
               <span class="club-manager">Manager: {{ club.managerName || '—' }}</span>
               <div class="club-actions">

@@ -1,0 +1,14 @@
+@if (failed()) {
+  <!-- Decorative: the card's heading already names the club, so the tile adds
+       nothing a screen reader needs to hear twice. -->
+  <div class="club-photo-fallback" aria-hidden="true">{{ initial() }}</div>
+} @else {
+  <img
+    class="club-photo"
+    [src]="src()"
+    [alt]="alt()"
+    loading="lazy"
+    decoding="async"
+    (error)="failed.set(true)"
+  />
+}
