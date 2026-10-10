@@ -1,0 +1,15 @@
+# Keep the build context small and deterministic: everything here is either
+# rebuilt inside the image or irrelevant to it.
+node_modules
+dist
+.angular
+tests
+playwright-report
+test-results
+blob-report
+.playwright
+Dockerfile
+.dockerignore
+.git
+.gitignore
+*.log

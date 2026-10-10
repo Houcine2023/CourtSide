@@ -14,7 +14,7 @@
   <div class="club-grid">
     @for (club of clubs(); track club.id) {
       <article class="club-card" [routerLink]="['/clubs', club.id]">
-        <app-club-photo [src]="club.photoUrl" [alt]="club.name" />
+        <app-club-photo [src]="club.photoUrl" [alt]="club.name" [priority]="$index < 4" />
         <header class="club-card-header">
           <h2 class="club-name">{{ club.name }}</h2>
           <span class="club-city">{{ club.city }}</span>

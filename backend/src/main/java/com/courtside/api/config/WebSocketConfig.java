@@ -1,5 +1,8 @@
 package com.courtside.api.config;
 
+import java.util.Arrays;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
@@ -18,6 +21,28 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    private final String[] allowedOriginPatterns;
+
+    public WebSocketConfig(
+            @Value("${app.websocket.allowed-origins:http://localhost:4200,http://localhost:*}") String allowedOrigins) {
+        this.allowedOriginPatterns = parseOrigins(allowedOrigins);
+    }
+
+    /**
+     * Production runs behind nginx on a real hostname, so the origin the browser
+     * sends is that hostname, not localhost. Rather than hard-code the two dev
+     * origins forever, they come from `app.websocket.allowed-origins`
+     * (env: APP_WEBSOCKET_ALLOWED_ORIGINS, comma-separated): dev keeps its
+     * defaults, a deployment wires in its own site origin, and the handshake
+     * stays an explicit allowlist — never `*`.
+     */
+    static String[] parseOrigins(String allowedOrigins) {
+        return Arrays.stream((allowedOrigins == null ? "" : allowedOrigins).split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toArray(String[]::new);
+    }
+
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         // In-memory broker: fine for one instance. With several instances, a client
@@ -32,9 +57,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                // The Angular dev server runs on another origin; the browser applies
-                // the same-origin policy to the WebSocket handshake too.
-                .setAllowedOriginPatterns("http://localhost:4200", "http://localhost:*");
+                // The browser always connects from its own origin: localhost in dev,
+                // the deployed host in production (see the constructor).
+                .setAllowedOriginPatterns(allowedOriginPatterns);
         // Plain WebSocket, not .withSockJS().
 
         // SockJS and the client disagreed: the server spoke the SockJS protocol

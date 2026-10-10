@@ -17,9 +17,9 @@ Rule: a review finding stays **OPEN** until verified fixed in the code — not j
 | 3a | 🟡 | email missing `@Email` | `RegisterRequest` | ✅ FIXED (verified 07-11) |
 | 3b | 🟡 | password missing `@NotBlank` — `@Size` **accepts null** (the null-skip trap of Bean Validation) | `RegisterRequest` | ✅ FIXED (verified 07-11) |
 | 3c | 🟡 | `fullName` has no validation — add `@NotBlank` | `RegisterRequest` | ✅ FIXED (verified 07-11) |
-| 4 | 🟡 | `LoginResponse` is an empty duplicate — **file still exists, delete it** | `dtos` | **OPEN** |
+| 4 | 🟡 | `LoginResponse` is an empty duplicate — **file still exists, delete it** | `dtos` | ✅ FIXED (verified 2026-10-10: file and all references gone) |
 | 5 | 🟢 | `long id` → `Long` (wrapper): unsaved entity should have `null` id, not `0` | `User` | ✅ FIXED (verified 07-11) |
-| 6 | 🟢 | `@Repository` redundant on a `JpaRepository` interface | `UserRepository` | **OPEN** |
+| 6 | 🟢 | `@Repository` redundant on a `JpaRepository` interface | `UserRepository` | ✅ FIXED (verified 2026-10-10: no `@Repository` in `repositories/`) |
 | — | 💭 | Design smell: `@Size(min=8)` on **login** password — policy belongs to registration | `LoginRequest` | ✅ FIXED (verified 07-11) |
 
 **Review #1 score: 8 / 10 fixed.**
@@ -204,6 +204,7 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 
 | Date | Session | Done |
 |---|---|---|
+| 2026-10-10 | 11 — Frontend complete + deploy prep | Club photo upload/manage (V5 migration, `/clubs/{id}/photo` GET/PUT/DELETE, shared `ClubPhotoComponent`, my-clubs upload UI, e2e). Fixed a real bug the e2e found: `staffGuard` read `auth.role()` before the profile finished reloading on a hard refresh, bouncing managers off `/my-clubs` (wait for `loadCurrentUser()`). Fixed NG0913 (LCP `loading="lazy"` on the photo card) by marking the first grid row `priority`. Deploy config: frontend SSR Dockerfile, `deploy/nginx.conf` gateway (single origin, no CORS), `docker-compose.prod.yml`, `.env.example`, `docs/DEPLOYMENT.md`. Two production bugs found & fixed by smoke-testing the built stack: the SSR server rejects every Host header unless `NG_ALLOWED_HOSTS` lists it, and the WebSocket handshake only allowed `localhost` origins → both now env-configurable (`SSR_ALLOWED_HOSTS`, `WEBSOCKET_ORIGINS`/`app.websocket.allowed-origins`). Prod stack verified end-to-end through the gateway: SSR pages, API, photos, 401 on protected routes, WS handshake 403/101 + STOMP subscribe, and a register→hold→confirm→409 double-book round trip. |
 | 2026-07-09 | 1 — Infra | Repo + compose (Postgres/Redis/Adminer) + Spring Boot skeleton + `application.yml` + Flyway V1 with exclusion constraint; verified live (health UP, overlap rejected). Commit `4d9f3aa` on `main`. |
 | 2026-08-03 | 8 — Holds, waitlist, occupancy | V2 migration (hold_expires_at, waitlist restructure, partial indexes). HOLD → confirm → auto-release job; waitlist join/leave/list with fair FIFO notification on cancellation AND hold expiry; occupancy rate via `generate_series` capacity; notification stub; 3 scheduled jobs. Verified: HOLD blocks the slot (409), auto-release after expiry, waitlist notified on both paths, duplicate join 422, occupancy 1/36 = 2.8%. Fixed `::date` vs `:param` parser clash. **Backend 100% of spec.** |
 | 2026-08-03 | 7 — WebSocket | STOMP over SockJS at `/ws`, `AvailabilityEvent` broadcast per club after commit. Verified with a real STOMP client: SLOT_BOOKED on booking, SLOT_RELEASED on cancel. **Backend feature-complete.** |
@@ -228,16 +229,18 @@ Bonus lesson: PowerShell 5.1 `Set-Content -Encoding utf8` writes a **BOM** (`﻿
 - [x] Session 2 — auth: register/login/JWT/`/me`, all 8 behavior tests green (commits `181082c` + `46b83e4`)
 - [x] Session 3 — refresh tokens, rotation, reuse detection, logout, cleanup job (all 7 tests green)
 - [x] Week 2 — clubs/courts CRUD + RBAC + error contract (18/18 behavior tests green)
-- [ ] **First automated tests** (JUnit + Mockito + Testcontainers) — still zero; every check so far has been manual
-- [ ] CI skeleton (GitHub Actions) + push repo to GitHub
+- [x] First automated tests (JUnit + Mockito + Failsafe ITs) — 68/68 green + JaCoCo
+- [x] CI skeleton (GitHub Actions) + repo pushed to GitHub (`Houcine2023/CourtSide`)
 - [x] Week 3 — availability grid + conflict-safe booking (16/16 tests + 10-way race test green)
 - [x] Manager dashboard (window functions + occupancy), Redis cache, WebSocket live updates
 - [x] HOLD/confirm payment flow, waitlist, scheduled jobs (release, reminders, cleanup)
-- [x] **BACKEND 100% COMPLETE against `FLAGSHIP_PROJECT_SPEC.md`** (MVP + V1; stretch items QR/i18n/photos intentionally out of scope)
-- [x] **Automated tests: 57 green** (49 unit/slice via Surefire + 8 integration via Failsafe) + JaCoCo
-- [x] **GitHub Actions CI**: Java 21/25 matrix, Postgres+Redis services, cached deps, artifacts, Docker image job
-- [x] Angular frontend foundation: auth (signals), refresh interceptor, guards, clubs typeahead, my-bookings
-- [ ] **Push to GitHub** (no remote yet — needs your login; `gh` CLI not installed)
-- [ ] Frontend remaining: club detail + availability grid, slot-picker CVA, booking flow, WebSocket live updates, manager dashboard, Playwright e2e
-- [ ] Then: deploy (Fly.io / Railway / Azure) and put the URL on the CV
+- [x] **BACKEND 100% COMPLETE against `FLAGSHIP_PROJECT_SPEC.md`**
+- [x] **GitHub Actions CI**: Java 21/25 matrix, Postgres+Redis services, cached deps, artifacts, Playwright e2e job, Docker image job — 5/5 green on latest push
+- [x] Angular frontend: auth (signals), refresh interceptor, guards, clubs typeahead, my-bookings
+- [x] Club detail + availability grid + slot-picker, booking flow, WebSocket live updates, waitlist, dashboard, my-clubs (court & opening-hours CRUD)
+- [x] Club photo upload/manage + placeholder tiles
+- [x] Playwright e2e: 37 tests green, wired into CI
+- [x] **Deploy config prepared** — frontend SSR Dockerfile, nginx gateway, `docker-compose.prod.yml`, `.env.example`, `docs/DEPLOYMENT.md`; prod stack smoke-tested end-to-end locally
+- [ ] **Live deploy** + put the URL on the CV (needs accounts/secrets — config is ready, nothing to write)
+- [ ] Delete remote branch `feature/auth` (needs `main` promoted to the GitHub default branch)
 - [ ] Hardening backlog: rate limiting, cache degradation if Redis is down, multi-node WebSocket broker

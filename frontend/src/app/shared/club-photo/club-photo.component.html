@@ -7,8 +7,9 @@
     class="club-photo"
     [src]="src()"
     [alt]="alt()"
-    loading="lazy"
-    decoding="async"
+    [attr.loading]="priority() ? 'eager' : 'lazy'"
+    [attr.fetchpriority]="priority() ? 'high' : 'auto'"
+    [attr.decoding]="priority() ? 'sync' : 'async'"
     (error)="failed.set(true)"
   />
 }

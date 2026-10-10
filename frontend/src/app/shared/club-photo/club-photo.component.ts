@@ -24,6 +24,13 @@ export class ClubPhotoComponent {
   readonly src = input.required<string>();
   /** Used as the alt text while the image loads and resolves. */
   readonly alt = input.required<string>();
+  /**
+   * The card grid is the first thing painted on the landing and directory pages,
+   * so the first row of photos is the Largest Contentful Paint candidate. Mark
+   * it priority (eager + high fetch priority) instead of lazy, or Angular warns
+   * NG0913 about deferring the LCP image.
+   */
+  readonly priority = input(false);
 
   protected readonly failed = signal(false);
   /** First character of the alt text — what the placeholder tile shows. */

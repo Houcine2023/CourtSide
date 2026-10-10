@@ -1,0 +1,89 @@
+# Production-style stack: one published port (80) in front of four internal services.
+#
+# Differences from docker-compose.yml (the dev stack):
+#   - no Adminer, and Postgres/Redis are NOT published to the host
+#   - every secret comes from .env, not from a literal in this file
+#   - the app runs from built images, not from `spring-boot:run` / `ng serve`
+#
+# Usage:
+#   cp .env.example .env          # then edit .env (at minimum POSTGRES_PASSWORD, JWT_SECRET)
+#   docker compose -p courtside-prod -f docker-compose.prod.yml up -d --build
+#   open http://localhost
+#
+# Tear down:  docker compose -p courtside-prod -f docker-compose.prod.yml down
+
+# Wipe data:  docker compose -p courtside-prod -f docker-compose.prod.yml down -v
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-courtside}
+      POSTGRES_USER: ${POSTGRES_USER:-courtside}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      # Kept separate from the dev stack's volume (docker-compose.yml uses `pgdata`):
+      # the two stacks must never share a Postgres data directory.
+      - pgdata-prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-courtside} -d ${POSTGRES_DB:-courtside}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      # Spring Boot relaxed binding maps these onto spring.datasource.* / spring.data.redis.*
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-courtside}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-courtside}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      SPRING_DATA_REDIS_HOST: redis
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (>= 32 bytes)}
+      # The browser connects to the WebSocket from the site's own origin, which is
+      # NOT localhost once deployed. List that origin here (comma-separated).
+      APP_WEBSOCKET_ALLOWED_ORIGINS: ${WEBSOCKET_ORIGINS:-http://localhost:*}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      PORT: 4000
+      # Angular's SSR rejects requests whose Host header is not allowlisted (SSRF
+      # protection). The gateway forwards the real browser Host, so deployments must
+      # list their hostname(s) here — see .env.example.
+      NG_ALLOWED_HOSTS: ${SSR_ALLOWED_HOSTS:-localhost}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      # Mounted read-only: nginx only needs to read its config, never rewrite it.
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  pgdata-prod:

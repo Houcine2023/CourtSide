@@ -1,0 +1,8 @@
+# The Maven build output is produced inside the image; sending a local target/
+# would only bloat the build context (and can poison the dependency cache).
+target
+.git
+.gitignore
+*.log
+Dockerfile
+.dockerignore

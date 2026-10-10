@@ -143,7 +143,7 @@
     <div class="club-grid">
       @for (club of clubs(); track club.id) {
         <article class="club-card card card-interactive">
-          <app-club-photo [src]="club.photoUrl" [alt]="club.name" />
+          <app-club-photo [src]="club.photoUrl" [alt]="club.name" [priority]="$index < 4" />
 
           <header class="club-card-header">
             <h3 class="club-name">
